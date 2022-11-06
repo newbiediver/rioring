@@ -12,7 +12,7 @@ namespace rioring {
 class io_service;
 class tcp_socket;
 
-typedef std::shared_ptr< tcp_socket > tcp_socket_ptr;
+using tcp_socket_ptr = std::shared_ptr< tcp_socket >;
 
 // Transform to downstream
 inline tcp_socket_ptr to_tcp_socket_ptr( socket_ptr &s ) {

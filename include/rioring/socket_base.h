@@ -20,7 +20,7 @@ namespace rioring {
 
 class io_service;
 
-typedef std::shared_ptr< socket_base > socket_ptr;
+using socket_ptr = std::shared_ptr< socket_base >;
 
 class socket_base : public std::enable_shared_from_this< socket_base > {
 public:
