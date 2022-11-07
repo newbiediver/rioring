@@ -14,8 +14,8 @@ public:
     thread_object() = default;
     virtual ~thread_object() = default;
 
-    void terminate()                        { is_terminated = true; }
-    [[nodiscard]] bool terminated() const   { return is_terminated; }
+    void stop_thread()                        { is_terminated = true; }
+    [[nodiscard]] bool thread_stopped() const   { return is_terminated; }
 
 protected:
     virtual void on_thread() = 0;

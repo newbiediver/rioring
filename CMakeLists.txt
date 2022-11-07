@@ -20,7 +20,7 @@ if (WIN32)
     add_compile_options("$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")
     set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /D_DEBUG")
     set(CMAKE_CXX_FLAGS_RELEASE  "${CMAKE_CXX_FLAGS_RELEASE} /DNDEBUG /O2 /Oi /Oy /GL")
-    add_definitions(/DWIN32_LEAN_AND_MEAN /DNOMINMAX /D_X86_ /D_LIB /D_WIN32_WINNT=0x0A00)
+    add_definitions(/DWIN32_LEAN_AND_MEAN /DNOMINMAX /D_AMD64_ /D_LIB /D_WIN32_WINNT=0x0A00)
     add_compile_options(/MP)
 else()
     add_compile_options(-g -pthread -fthreadsafe-statics -fno-omit-frame-pointer -Wno-format-security)
@@ -33,6 +33,7 @@ set(SOURCE_FILES
         cpp/thread_lock.cpp
         cpp/io_service.cpp
         cpp/io_buffer.cpp
+        cpp/io_double_buffer.cpp
         cpp/socket_base.cpp
         cpp/tcp_server.cpp
         cpp/tcp_socket.cpp)

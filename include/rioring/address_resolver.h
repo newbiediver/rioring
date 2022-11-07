@@ -5,7 +5,9 @@
 #ifndef RIORING_ADDRESS_RESOLVER_H
 #define RIORING_ADDRESS_RESOLVER_H
 
+#ifdef __linux__
 #include <netdb.h>
+#endif
 #include <string>
 
 namespace rioring {

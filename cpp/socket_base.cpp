@@ -51,6 +51,18 @@ void socket_base::io_sent( size_t bytes_transferred ) {
 }
 
 void socket_base::io_shutdown() {
+    on_shutdown();
+
+#ifdef WIN32
+    if ( socket_handler != INVALID_SOCKET ) {
+        closesocket( socket_handler );
+        socket_handler = INVALID_SOCKET;
+    }
+
+    current_io->unregister_buffer( recv_buffer_id );
+    current_io->unregister_buffer( send_buffer_id );
+#endif
+
     if ( socket_close_event ) {
         auto ptr = shared_from_this();
         socket_close_event( ptr );
@@ -64,32 +76,25 @@ void socket_base::io_error( const std::error_code &ec ) {
     }
 }
 
-void socket_base::submit_receiving() {
-    auto ctx = current_io->allocate_context();
-    ctx->handler = shared_from_this();
-    ctx->type = io_context::io_type::read;
-    ctx->iov.iov_base = std::data( recv_bind_buffer );
-    ctx->iov.iov_len = DATA_BUFFER_SIZE;
+#ifdef WIN32
+void socket_base::on_active() {
+    request_queue = current_io->create_request_queue( socket_handler );
+    if ( request_queue == RIO_INVALID_RQ ) {
+        io_error( std::make_error_code( std::errc( errno ) ) );
+        return;
+    }
 
-    current_io->submit( ctx );
+    recv_buffer_id = current_io->register_buffer( std::data( recv_bind_buffer ), std::size( recv_bind_buffer ) );
+    if ( recv_buffer_id == RIO_INVALID_BUFFERID ) {
+        io_error( std::make_error_code( std::errc( errno ) ) );
+        return;
+    }
+
+    send_buffer_id = current_io->register_buffer( std::data( send_bind_buffer ), std::size( send_bind_buffer ) );
+    if ( send_buffer_id == RIO_INVALID_BUFFERID ) {
+        io_error( std::make_error_code( std::errc( errno ) ) );
+    }
 }
-
-void socket_base::submit_sending() {
-    auto ctx = current_io->allocate_context();
-    ctx->handler = shared_from_this();
-    ctx->type = io_context::io_type::write;
-    ctx->iov.iov_base = const_cast< unsigned char* >( *send_buffer );
-    ctx->iov.iov_len = send_buffer.size();
-
-    current_io->submit( ctx );
-}
-
-void socket_base::submit_shutdown() {
-    auto ctx = current_io->allocate_context();
-    ctx->handler = shared_from_this();
-    ctx->type = io_context::io_type::shutdown;
-
-    current_io->submit( ctx );
-}
+#endif
 
 }

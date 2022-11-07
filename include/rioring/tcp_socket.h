@@ -29,7 +29,12 @@ public:
     ~tcp_socket() override = default;
 
     static tcp_socket_ptr create( io_service *io );
+
+#ifdef WIN32
+    static tcp_socket_ptr create( io_service *io, SOCKET sock );
+#else
     static tcp_socket_ptr create( io_service *io, int sock );
+#endif
 
     bool connect( std::string_view address, unsigned short port );
     void set_user_data( void *data )                { user_data = data; }
@@ -44,11 +49,27 @@ public:
 
 protected:
     explicit tcp_socket( io_service *io );
+
+#ifdef WIN32
+    explicit tcp_socket( io_service *io, SOCKET sock );
+#else
     explicit tcp_socket( io_service *io, int sock );
+    void submit_shutdown() override;
+#endif
+
+    void submit_receiving() override;
+    void submit_sending() override;
+
+    void on_shutdown() override;
     void on_active() override;
     void on_send_complete() override;
 
 private:
+    void set_remote_info( struct ::sockaddr *addr );
+
+private:
+    friend class tcp_server;
+
     void*           user_data{ nullptr };
     bool            connected_flag{ false };
     bool            shutdown_gracefully{ false };

@@ -6,6 +6,28 @@
 #define RIORING_CONTEXT_H
 
 #include <memory>
+
+#ifdef WIN32
+
+namespace rioring {
+
+class socket_base;
+
+struct io_context : public RIO_BUF {
+    enum class io_type {
+        read,
+        write,
+    };
+
+    io_type         type;
+    RIO_RQ          rq;
+    std::shared_ptr< socket_base >     handler;
+};
+
+}
+
+#else
+
 #include <bits/types/struct_iovec.h>
 
 namespace rioring {
@@ -27,6 +49,6 @@ struct io_context {
 
 }
 
-
+#endif
 
 #endif //RIORING_CONTEXT_H

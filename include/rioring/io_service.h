@@ -5,11 +5,62 @@
 #ifndef RIORING_IO_SERVICE_H
 #define RIORING_IO_SERVICE_H
 
-#include <liburing.h>
 #include "rioring/thread_generator.h"
 #include "rioring/thread_object.h"
 #include "rioring/thread_lock.h"
 #include "rioring/simple_pool.h"
+
+#ifdef WIN32
+
+#include <WinSock2.h>
+#include <MSWSock.h>
+
+#pragma comment(lib, "ws2_32")
+
+namespace rioring {
+
+class io_context;
+
+class io_service : private thread_object {
+public:
+    io_service();
+    ~io_service() noexcept override;
+
+    bool run( int concurrency );
+    bool submit( io_context *ctx ) const;
+    void stop();
+
+    io_context *allocate_context();
+
+protected:
+    void on_thread() override;
+
+private:
+    void io( RIO_CQ cq );
+    void deallocate_context( io_context *ctx );
+    bool load_rio();
+
+    RIO_BUFFERID register_buffer( void * buffer, size_t size ) const;
+    void unregister_buffer( RIO_BUFFERID id ) const;
+    RIO_RQ create_request_queue( SOCKET s );
+
+private:
+    friend class socket_base;
+
+    spin_lock                   lock;
+    std::vector< RIO_CQ >       io_array;
+    simple_pool< io_context >   context_pool;
+    std::atomic_int             running_io{ 0 };
+    RIO_EXTENSION_FUNCTION_TABLE rio{};
+
+    thread_generator            tg;
+};
+
+}
+
+#else
+
+#include <liburing.h>
 
 namespace rioring {
 
@@ -43,10 +94,13 @@ private:
     spin_lock                   lock;
     std::vector< io_uring* >    io_array;
     simple_pool< io_context >   context_pool;
+    std::atomic_int             running_io{ 0 };
 
     thread_generator            tg;
 };
 
 }
+
+#endif
 
 #endif //RIORING_IO_SERVICE_H
