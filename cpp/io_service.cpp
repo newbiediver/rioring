@@ -2,6 +2,10 @@
 // Created by newbiediver on 22. 10. 31.
 //
 
+#include <chrono>
+
+using namespace std::chrono_literals;
+
 #ifdef WIN32
 
 #include <cassert>
@@ -10,8 +14,6 @@
 #include "rioring/io_service.h"
 #include "rioring/io_context.h"
 #include "rioring/socket_base.h"
-
-using namespace std::chrono_literals;
 
 namespace rioring {
 
@@ -238,7 +240,7 @@ void io_service::deallocate_context( io_context *ctx ) {
 }
 
 bool io_service::submit( io_context *ctx ) {
-    size_t index = ctx->handler->socket_handler % io_array.size();
+    size_t index = ctx->handler->object_id() % io_array.size();
     auto ring = io_array[ index ];
     io_uring_sqe *sqe = io_uring_get_sqe( ring );
 
@@ -249,20 +251,32 @@ bool io_service::submit( io_context *ctx ) {
 
     switch ( ctx->type ) {
     case io_context::io_type::accept:
-        io_uring_prep_accept( sqe,
-                              ctx->handler->socket_handler,
-                              reinterpret_cast< sockaddr * >( &ctx->handler->addr6 ),
-                              &ctx->handler->addr_len,
-                              0 );
+        if ( auto server = to_tcp_server_ptr( ctx->handler ); server != nullptr ) {
+            io_uring_prep_accept( sqe,
+                                  server->server_socket,
+                                  reinterpret_cast< sockaddr * >( &server->addr6 ),
+                                  &server->addr_len,
+                                  0 );
+        }
         break;
     case io_context::io_type::read:
-        io_uring_prep_readv( sqe, ctx->handler->socket_handler, &ctx->iov, 1, 0 );
+        if ( auto socket = to_socket_ptr( ctx->handler ); socket != nullptr ) {
+            io_uring_prep_readv( sqe, socket->socket_handler, &ctx->iov, 1, 0 );
+        }
         break;
     case io_context::io_type::write:
-        io_uring_prep_writev( sqe, ctx->handler->socket_handler, &ctx->iov, 1, 0 );
+        if ( auto socket = to_socket_ptr( ctx->handler ); socket != nullptr ) {
+            io_uring_prep_writev( sqe, socket->socket_handler, &ctx->iov, 1, 0 );
+        }
         break;
     case io_context::io_type::shutdown:
-        io_uring_prep_shutdown( sqe, ctx->handler->socket_handler, 0 );
+        if ( auto socket = to_socket_ptr( ctx->handler ); socket != nullptr ) {
+            io_uring_prep_shutdown( sqe, socket->socket_handler, 0 );
+        } else {
+            if ( auto server = to_tcp_server_ptr( ctx->handler ); server != nullptr ) {
+                io_uring_prep_shutdown( sqe, server->server_socket, 0 );
+            }
+        }
         break;
     }
 
@@ -310,13 +324,13 @@ void io_service::io( io_uring *ring ) {
         }
 
         auto context = reinterpret_cast< io_context * >( cqe->user_data );
-        auto socket = context->handler;
+        auto socket = to_socket_ptr( context->handler );
 
         switch ( context->type ) {
         case io_context::io_type::accept:
             if ( cqe->res > 0 ) {
-                if ( auto server = to_tcp_server_ptr( socket ); server != nullptr ) {
-                    server->io_accepting( cqe->res, reinterpret_cast< sockaddr * >( &socket->addr6 ) );
+                if ( auto server = to_tcp_server_ptr( context->handler ); server != nullptr ) {
+                    server->io_accepting( cqe->res, reinterpret_cast< sockaddr * >( &server->addr6 ) );
                 }
             }
             break;
@@ -335,13 +349,24 @@ void io_service::io( io_uring *ring ) {
             }
             break;
         case io_context::io_type::shutdown:
-            if ( socket->socket_handler ) {
-                int fd = socket->socket_handler;
-                socket->socket_handler = 0;
+            if ( socket ) {
+                if ( socket->socket_handler ) {
+                    int fd = socket->socket_handler;
+                    socket->socket_handler = 0;
 
-                ::shutdown( fd, SHUT_RDWR );
-                ::close( fd );
+                    ::shutdown( fd, SHUT_RDWR );
+                    ::close( fd );
+                }
+            } else {
+                if ( auto server = to_tcp_server_ptr( context->handler ); server != nullptr ) {
+                    int fd = server->server_socket;
+                    server->server_socket = 0;
+
+                    ::shutdown( fd, SHUT_RDWR );
+                    ::close( fd );
+                }
             }
+
             break;
         }
 

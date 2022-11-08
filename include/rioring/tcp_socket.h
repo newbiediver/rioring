@@ -5,7 +5,7 @@
 #ifndef RIORING_TCP_SOCKET_H
 #define RIORING_TCP_SOCKET_H
 
-#include "socket_base.h"
+#include "socket_object.h"
 
 namespace rioring {
 
@@ -15,11 +15,16 @@ class tcp_socket;
 using tcp_socket_ptr = std::shared_ptr< tcp_socket >;
 
 // Transform to downstream
-inline tcp_socket_ptr to_tcp_socket_ptr( socket_ptr &s ) {
-    return std::dynamic_pointer_cast< tcp_socket, socket_base >( s );
+inline tcp_socket_ptr to_tcp_socket_ptr( object_ptr &s ) {
+    return std::dynamic_pointer_cast< tcp_socket, object_base >( s );
 }
 
-class tcp_socket : public socket_base {
+// Transform to downstream
+inline tcp_socket_ptr to_tcp_socket_ptr( socket_ptr &s ) {
+    return std::dynamic_pointer_cast< tcp_socket, socket_object >( s );
+}
+
+class tcp_socket : public socket_object {
 public:
     enum class close_type {
         graceful,

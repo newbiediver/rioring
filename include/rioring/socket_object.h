@@ -100,10 +100,8 @@ protected:
 #else
 #include <netinet/in.h>
 #endif
-#include <system_error>
 #include <array>
-#include <memory>
-#include <functional>
+#include "object_base.h"
 #include "thread_lock.h"
 #include "io_context.h"
 #include "io_buffer.h"
@@ -114,25 +112,29 @@ namespace rioring {
 #define DATA_BUFFER_SIZE (1024*64)
 
 class io_service;
+class socket_object;
 
-using socket_ptr = std::shared_ptr< socket_base >;
+using socket_ptr = std::shared_ptr< socket_object >;
 
-class socket_base : public std::enable_shared_from_this< socket_base > {
+inline socket_ptr to_socket_ptr( object_ptr &s ) {
+    return std::dynamic_pointer_cast< socket_object, object_base >( s );
+}
+
+class socket_object : public object_base {
 public:
     using receive_event = void (*)(socket_ptr&, io_buffer*);
     using send_event = void (*)(socket_ptr&);
     using close_event = void (*)(socket_ptr&);
-    using error_callback = void (*)(socket_ptr &, const std::error_code &);
 
-    socket_base() = delete;
-    virtual ~socket_base() = default;
+    socket_object() = delete;
+    ~socket_object() override = default;
 
-    explicit socket_base( io_service *io ) : current_io{ io } {}
+    explicit socket_object( io_service *io ) : current_io{ io } {}
 
 #ifdef WIN32
     explicit socket_base( io_service *io, SOCKET sock ) : current_io{ io }, socket_handler{ sock } {}
 #else
-    explicit socket_base( io_service *io, int sock ) : current_io{ io }, socket_handler{ sock } {}
+    explicit socket_object( io_service *io, int sock ) : current_io{ io }, socket_handler{ sock } {}
 #endif
 
     [[nodiscard]] const char* remote_ipv4() const   { return std::data( remote_v4_addr_string ); }
@@ -142,13 +144,11 @@ public:
     void set_receive_event( receive_event event );
     void set_send_complete_event( send_event event );
     void set_close_event( close_event event );
-    void set_error_callback( error_callback callback );
 
 protected:
     void io_received( size_t bytes_transferred );
     void io_sent( size_t bytes_transferred );
     void io_shutdown();
-    void io_error( const std::error_code &ec );
 
 protected:
     virtual void submit_receiving() {}
@@ -162,12 +162,15 @@ protected:
 #endif
 
 protected:
-
     virtual void on_shutdown() {}
     virtual void on_send_complete() {}
 
+private:
+    socket_ptr cast_socket_ptr();
+
 protected:
     friend class io_service;
+    friend class tcp_server;
 
     io_service      *current_io;
 
@@ -196,7 +199,6 @@ protected:
     std::function< void( socket_ptr&, io_buffer* ) >                recv_event;
     std::function< void( socket_ptr& ) >                            send_complete_event;
     std::function< void( socket_ptr& ) >                            socket_close_event;
-    std::function< void( socket_ptr&, const std::error_code& ) >    error_event;
 };
 
 }

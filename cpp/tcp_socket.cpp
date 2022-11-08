@@ -170,17 +170,19 @@ void tcp_socket::set_remote_info( struct ::sockaddr *addr ) {
 #else
 
 #include <netinet/tcp.h>
+#include <arpa/inet.h>
 #include <csignal>
+#include "rioring/io_service.h"
 #include "rioring/tcp_socket.h"
 #include "rioring/address_resolver.h"
 
 namespace rioring {
 
-tcp_socket::tcp_socket( rioring::io_service *io ) : socket_base{ io } {
+tcp_socket::tcp_socket( rioring::io_service *io ) : socket_object{ io } {
 
 }
 
-tcp_socket::tcp_socket( rioring::io_service *io, int sock ) : socket_base{ io, sock } {
+tcp_socket::tcp_socket( rioring::io_service *io, int sock ) : socket_object{ io, sock } {
 
 }
 
@@ -305,6 +307,22 @@ void tcp_socket::submit_shutdown() {
     ctx->type = io_context::io_type::shutdown;
 
     current_io->submit( ctx );
+}
+
+void tcp_socket::set_remote_info( struct ::sockaddr *addr ) {
+    if ( addr->sa_family == AF_INET ) {
+        auto in = reinterpret_cast< ::sockaddr_in* >( addr );
+        remote_port_number = ntohs( in->sin_port );
+        inet_ntop( AF_INET, &in->sin_addr, std::data( remote_v4_addr_string ), std::size( remote_v4_addr_string ) );
+    } else {
+        auto in = reinterpret_cast< ::sockaddr_in6* >( addr );
+        remote_port_number = ntohs( in->sin6_port );
+        inet_ntop( AF_INET6, &in->sin6_addr, std::data( remote_v6_addr_string ), std::size( remote_v6_addr_string ) );
+
+        const auto bytes = in->sin6_addr.s6_addr;
+        const auto v4 = reinterpret_cast< const ::in_addr* >( bytes + 12 );
+        inet_ntop( AF_INET, v4, std::data( remote_v4_addr_string ), std::size( remote_v4_addr_string ) );
+    }
 }
 
 }

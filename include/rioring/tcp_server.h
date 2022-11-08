@@ -24,17 +24,15 @@ inline tcp_server_ptr to_tcp_server_ptr( socket_ptr &s ) {
 return std::dynamic_pointer_cast< tcp_server, socket_base >( s );
 }
 
-class tcp_server : private thread_object, public std::enable_shared_from_this< tcp_server > {
+class tcp_server : private thread_object, public object_base {
 public:
     using accept_event = void (*)(tcp_socket_ptr&);
-    using error_callback = void (*)(tcp_server_ptr&, const std::error_code&);
 
     tcp_server() = delete;
     ~tcp_server() override = default;
 
     static tcp_server_ptr create( io_service *io );
     void set_accept_event( accept_event event );
-    void set_error_callback( error_callback ec );
 
     bool run( unsigned short port );
     void stop();
@@ -51,7 +49,6 @@ private:
     SOCKET      server_socket{ INVALID_SOCKET };
 
     std::function< void( tcp_socket_ptr &new_socket ) >                 accept_event_callback;
-    std::function< void( tcp_server_ptr&, const std::error_code& ) >    error;
 
     thread_generator    tg;
 };
@@ -68,11 +65,11 @@ class tcp_server;
 using tcp_server_ptr = std::shared_ptr< tcp_server >;
 
 // Transform to downstream
-inline tcp_server_ptr to_tcp_server_ptr( socket_ptr &s ) {
-    return std::dynamic_pointer_cast< tcp_server, socket_base >( s );
+inline tcp_server_ptr to_tcp_server_ptr( object_ptr &s ) {
+    return std::dynamic_pointer_cast< tcp_server, object_base >( s );
 }
 
-class tcp_server : public socket_base {
+class tcp_server : public object_base {
 public:
     typedef void (*accept_event) (tcp_socket_ptr&);
 
@@ -87,7 +84,8 @@ public:
 
 protected:
     void io_accepting( int new_socket, struct ::sockaddr *addr );
-    void on_accept( socket_ptr &new_socket );
+
+    virtual void on_accept( tcp_socket_ptr &new_socket );
 
 private:
     explicit tcp_server( io_service *io );
@@ -95,6 +93,13 @@ private:
 
 private:
     friend class io_service;
+
+    io_service  *current_io;
+    int         server_socket{ 0 };
+
+    sockaddr_in6    addr6{};
+    socklen_t       addr_len{ sizeof( sockaddr_in6 ) };
+
     std::function< void( tcp_socket_ptr& ) >    new_connect_event;
 };
 

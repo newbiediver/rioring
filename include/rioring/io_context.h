@@ -32,19 +32,19 @@ struct io_context : public RIO_BUF {
 
 namespace rioring {
 
-class socket_base;
+class object_base;
 
 struct io_context {
     enum class io_type {
         accept,
         read,
         write,
-        shutdown
+        shutdown,
     };
 
     io_type         type;
     iovec           iov{};
-    std::shared_ptr< socket_base >     handler;
+    std::shared_ptr< object_base >     handler;
 };
 
 }

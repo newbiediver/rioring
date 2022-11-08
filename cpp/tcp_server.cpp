@@ -18,10 +18,6 @@ tcp_server_ptr tcp_server::create( io_service *io ) {
     return tcp_server_ptr{ ptr };
 }
 
-void tcp_server::set_error_callback( error_callback ec ) {
-    error = ec;
-}
-
 void tcp_server::set_accept_event( accept_event event ) {
     accept_event_callback = event;
 }
@@ -29,7 +25,7 @@ void tcp_server::set_accept_event( accept_event event ) {
 void tcp_server::error_occur( std::errc err ) {
     if ( error ) {
         auto ptr = shared_from_this();
-        error( ptr, std::make_error_code( err ) );
+        error_event( ptr, std::make_error_code( err ) );
     }
 }
 
@@ -44,13 +40,13 @@ bool tcp_server::run( unsigned short port ) {
     setsockopt( server_socket, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast< const char* >( &on ), sizeof( int ) );
     setsockopt( server_socket, IPPROTO_IPV6, IPV6_V6ONLY, reinterpret_cast< const char* >( &off ), sizeof( int ) );
 
-    struct ::sockaddr_in6 dualStack{};
-    memset( &dualStack, 0, sizeof( dualStack ) );
-    dualStack.sin6_family = AF_INET6;
-    dualStack.sin6_port = htons( port );
-    dualStack.sin6_addr = in6addr_any;
+    struct ::sockaddr_in6 in{};
+    memset( &in, 0, sizeof( in ) );
+    in.sin6_family = AF_INET6;
+    in.sin6_port = htons( port );
+    in.sin6_addr = in6addr_any;
 
-    if ( bind( server_socket, reinterpret_cast< const struct sockaddr * >( &dualStack ), sizeof( dualStack ) ) == SOCKET_ERROR ) {
+    if ( bind( server_socket, reinterpret_cast< const struct sockaddr * >( &in ), sizeof( in ) ) == SOCKET_ERROR ) {
         error_occur( std::errc( errno ) );
         return false;
     }
@@ -97,11 +93,10 @@ void tcp_server::on_thread() {
 #else
 
 #include <cstring>
-#include <arpa/inet.h>
 
 namespace rioring {
 
-tcp_server::tcp_server( io_service *io ) : socket_base{ io } {
+tcp_server::tcp_server( io_service *io ) : current_io{ io } {
 
 }
 
@@ -120,15 +115,15 @@ bool tcp_server::run( unsigned short port ) {
         io_error( std::make_error_code( std::errc( errno ) ) );
     };
 
-    socket_handler = socket( AF_INET6, SOCK_STREAM, 0 );
-    if ( socket_handler == -1 ) {
+    server_socket = socket( AF_INET6, SOCK_STREAM, 0 );
+    if ( server_socket == -1 ) {
         error_occur();
         return false;
     }
 
     int on = 1, off = 0;
-    setsockopt( socket_handler, SOL_SOCKET, SO_REUSEADDR, &on, sizeof( int ) );
-    setsockopt( socket_handler, IPPROTO_IPV6, IPV6_V6ONLY, &off, sizeof( int ) );
+    setsockopt( server_socket, SOL_SOCKET, SO_REUSEADDR, &on, sizeof( int ) );
+    setsockopt( server_socket, IPPROTO_IPV6, IPV6_V6ONLY, &off, sizeof( int ) );
 
     ::sockaddr_in6 in{};
     memset( &in, 0, sizeof( in ) );
@@ -137,12 +132,12 @@ bool tcp_server::run( unsigned short port ) {
     in.sin6_port = htons( port );
     in.sin6_addr = in6addr_any;
 
-    if ( bind( socket_handler, reinterpret_cast< ::sockaddr* >( &in ), sizeof( in ) ) < 0 ) {
+    if ( bind( server_socket, reinterpret_cast< ::sockaddr* >( &in ), sizeof( in ) ) < 0 ) {
         error_occur();
         return false;
     }
 
-    if ( listen( socket_handler, 5 ) < 0 ) {
+    if ( listen( server_socket, 5 ) < 0 ) {
         error_occur();
         return false;
     }
@@ -169,30 +164,16 @@ void tcp_server::submit_accept() {
 }
 
 void tcp_server::io_accepting( int new_socket, struct ::sockaddr *addr ) {
-    if ( addr->sa_family == AF_INET ) {
-        auto in = reinterpret_cast< ::sockaddr_in* >( addr );
-        remote_port_number = ntohs( in->sin_port );
-        inet_ntop( AF_INET, &in->sin_addr, std::data( remote_v4_addr_string ), std::size( remote_v4_addr_string ) );
-    } else {
-        auto in = reinterpret_cast< ::sockaddr_in6* >( addr );
-        remote_port_number = ntohs( in->sin6_port );
-        inet_ntop( AF_INET6, &in->sin6_addr, std::data( remote_v6_addr_string ), std::size( remote_v6_addr_string ) );
+    tcp_socket_ptr socket = tcp_socket::create( current_io, new_socket );
+    socket->set_remote_info( addr );
 
-        const auto bytes = in->sin6_addr.s6_addr;
-        const auto v4 = reinterpret_cast< const ::in_addr_t* >( bytes + 12 );
-        inet_ntop( AF_INET, v4, std::data( remote_v4_addr_string ), std::size( remote_v4_addr_string ) );
-    }
-
-    socket_ptr socket = tcp_socket::create( current_io, new_socket );
     on_accept( socket );
-
     socket->on_active();
 }
 
-void tcp_server::on_accept( socket_ptr &new_socket ) {
+void tcp_server::on_accept( tcp_socket_ptr &new_socket ) {
     if ( new_connect_event ) {
-        auto new_tcp_socket = to_tcp_socket_ptr( new_socket );
-        new_connect_event( new_tcp_socket );
+        new_connect_event( new_socket );
     }
 
     submit_accept();

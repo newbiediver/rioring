@@ -34,9 +34,9 @@ set(SOURCE_FILES
         cpp/io_service.cpp
         cpp/io_buffer.cpp
         cpp/io_double_buffer.cpp
-        cpp/socket_base.cpp
+        cpp/socket_object.cpp
         cpp/tcp_server.cpp
-        cpp/tcp_socket.cpp)
+        cpp/tcp_socket.cpp cpp/object_base.cpp)
 
 include_directories(./include)
 
