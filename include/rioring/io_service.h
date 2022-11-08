@@ -45,7 +45,7 @@ private:
     RIO_RQ create_request_queue( SOCKET s );
 
 private:
-    friend class socket_base;
+    friend class socket_object;
 
     spin_lock                   lock;
     std::vector< RIO_CQ >       io_array;

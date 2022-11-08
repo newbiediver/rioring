@@ -12,11 +12,11 @@
 
 namespace rioring {
 
-tcp_socket::tcp_socket( rioring::io_service *io ) : socket_base{ io } {
+tcp_socket::tcp_socket( rioring::io_service *io ) : socket_object{ io } {
 
 }
 
-tcp_socket::tcp_socket( rioring::io_service *io, SOCKET sock ) : socket_base{ io, sock } {
+tcp_socket::tcp_socket( rioring::io_service *io, SOCKET sock ) : socket_object{ io, sock } {
 
 }
 
@@ -105,7 +105,7 @@ void tcp_socket::on_active() {
     setsockopt( socket_handler, SOL_SOCKET, SO_KEEPALIVE, reinterpret_cast< const char* >( &arg ), sizeof( int ) );
     WSAIoctl( socket_handler, SIO_KEEPALIVE_VALS, &keepAlive, sizeof( tcp_keepalive ), nullptr, 0, &byteReturn, nullptr, nullptr );
 
-    socket_base::on_active();
+    socket_object::on_active();
 
     submit_receiving();
 }

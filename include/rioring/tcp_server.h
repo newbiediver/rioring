@@ -17,11 +17,11 @@ namespace rioring {
 class tcp_server;
 class io_service;
 
-using tcp_server_ptr = std::shared_ptr<tcp_server>;
+using tcp_server_ptr = std::shared_ptr< tcp_server >;
 
 // Transform to downstream
-inline tcp_server_ptr to_tcp_server_ptr( socket_ptr &s ) {
-return std::dynamic_pointer_cast< tcp_server, socket_base >( s );
+inline tcp_server_ptr to_tcp_server_ptr( object_ptr &s ) {
+    return std::dynamic_pointer_cast< tcp_server, object_base >( s );
 }
 
 class tcp_server : private thread_object, public object_base {

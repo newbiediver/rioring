@@ -23,7 +23,7 @@ void tcp_server::set_accept_event( accept_event event ) {
 }
 
 void tcp_server::error_occur( std::errc err ) {
-    if ( error ) {
+    if ( error_event ) {
         auto ptr = shared_from_this();
         error_event( ptr, std::make_error_code( err ) );
     }

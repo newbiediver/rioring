@@ -132,7 +132,7 @@ public:
     explicit socket_object( io_service *io ) : current_io{ io } {}
 
 #ifdef WIN32
-    explicit socket_base( io_service *io, SOCKET sock ) : current_io{ io }, socket_handler{ sock } {}
+    explicit socket_object( io_service *io, SOCKET sock ) : current_io{ io }, socket_handler{ sock } {}
 #else
     explicit socket_object( io_service *io, int sock ) : current_io{ io }, socket_handler{ sock } {}
 #endif

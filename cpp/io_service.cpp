@@ -13,7 +13,7 @@ using namespace std::chrono_literals;
 #include <chrono>
 #include "rioring/io_service.h"
 #include "rioring/io_context.h"
-#include "rioring/socket_base.h"
+#include "rioring/socket_object.h"
 
 namespace rioring {
 
@@ -29,8 +29,8 @@ static void start_winsock() {
     WSAData data{};
     int result = WSAStartup( MAKEWORD( 2, 2 ), &data );
     if ( result != 0 ) {
-        int err = WSAGetLastError();
-        int a = 0;
+        int *p = nullptr;
+        *p = 0;
     }
     g_init_winsock = true;
 }
@@ -148,7 +148,7 @@ void io_service::io( RIO_CQ cq ) {
 
         for ( decltype( cnt ) i = 0; i < cnt; ++i ) {
             auto context = reinterpret_cast< io_context* >( result[i].RequestContext );
-            auto connector = context->handler;
+            auto connector = to_socket_ptr( context->handler );
             auto bytes_transferred = result[i].BytesTransferred;
 
             switch ( context->type ) {

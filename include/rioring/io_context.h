@@ -11,7 +11,7 @@
 
 namespace rioring {
 
-class socket_base;
+class object_base;
 
 struct io_context : public RIO_BUF {
     enum class io_type {
@@ -21,7 +21,7 @@ struct io_context : public RIO_BUF {
 
     io_type         type;
     RIO_RQ          rq;
-    std::shared_ptr< socket_base >     handler;
+    std::shared_ptr< object_base >     handler;
 };
 
 }
