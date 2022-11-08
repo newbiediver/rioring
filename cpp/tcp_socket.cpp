@@ -74,6 +74,7 @@ bool tcp_socket::send( const void *bytes, size_t size ) {
     if ( shutdown_gracefully ) return false;
     if ( !connected() ) return false;
 
+    // Scatter gather
     std::scoped_lock sc{ lock };
     if ( send_buffer.empty() ) {
         send_buffer.push( static_cast< const unsigned char* >( bytes ), size );

@@ -71,6 +71,8 @@ void socket_object::io_shutdown() {
 
 #ifdef WIN32
 void socket_object::on_active() {
+    // RQ 생성 및 버퍼들을 register 해줌
+    // RQ creation and register buffers
     request_queue = current_io->create_request_queue( socket_handler );
     if ( request_queue == RIO_INVALID_RQ ) {
         io_error( std::make_error_code( std::errc( errno ) ) );

@@ -52,6 +52,7 @@ io_service::~io_service() noexcept {
     }
 }
 
+// Load registered io function table
 bool io_service::load_rio() {
     GUID id = WSAID_MULTIPLE_RIO;
     unsigned long size = 0;
@@ -136,16 +137,20 @@ void io_service::io( RIO_CQ cq ) {
 
     while ( !thread_stopped() ) {
         memset( &result[0], 0, sizeof( RIORESULT ) );
+
         auto cnt = rio.RIODequeueCompletion( cq, &result[0], MAX_RIO_RESULT );
         if ( cnt == 0 ) {
             std::this_thread::sleep_for( 1ms );
             continue;
         } else if ( cnt == RIO_CORRUPT_CQ ) {
+            // Something wrong?
             assert( cnt != RIO_CORRUPT_CQ && "What?" );
             int *p = nullptr;
             *p = 0;
         }
 
+        // CQ가 완료되면 통지
+        // Notify when CQ complete
         for ( decltype( cnt ) i = 0; i < cnt; ++i ) {
             auto context = reinterpret_cast< io_context* >( result[i].RequestContext );
             auto connector = to_socket_ptr( context->handler );
@@ -181,6 +186,7 @@ RIO_RQ io_service::create_request_queue( SOCKET s ) {
     auto h1 = static_cast< size_t >( s );
     auto h2 = h1 + 1;
 
+    // hashing by socket number
     RIO_CQ & recv = io_array[ h1 % io_array.size() ];
     RIO_CQ & send = io_array[ h2 % io_array.size() ];
 
