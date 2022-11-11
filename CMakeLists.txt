@@ -8,5 +8,10 @@ project(rioring)
 
 set(CMAKE_CXX_STANDARD 17)
 
+if (WIN32)
+    add_compile_options("$<$<C_COMPILER_ID:MSVC>:/utf-8>")
+    add_compile_options("$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")
+endif()
+
 add_subdirectory(src)
 add_subdirectory(test)

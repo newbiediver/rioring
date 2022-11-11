@@ -12,12 +12,6 @@ enable_testing()
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin)
 file(GLOB_RECURSE TEST_SOURCES LIST_DIRECTORIES false *.h *.cpp)
 
-if (CMAKE_BUILD_TYPE STREQUAL "Debug")
-    set(RIORING rioringd)
-else()
-    set(RIORING rioring)
-endif()
-
 include_directories(../src/include)
 
 add_executable(
@@ -27,7 +21,18 @@ add_executable(
 
 add_test(NAME BasicTest COMMAND BasicTest)
 
-target_link_libraries(BasicTest PUBLIC ${RIORING} uring GTest::gtest_main)
+if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+    set(RIORING rioringd)
+else()
+    set(RIORING rioring)
+endif()
+
+if (WIN32)
+    target_link_libraries(BasicTest PUBLIC ${RIORING} GTest::gtest_main)
+else()
+    target_link_libraries(BasicTest PUBLIC ${RIORING} uring GTest::gtest_main)
+endif()
+
 
 include(GoogleTest)
 gtest_discover_tests(BasicTest)
