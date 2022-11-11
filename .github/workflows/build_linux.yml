@@ -11,7 +11,7 @@ env:
   BUILD_TYPE: Release
 
 jobs:
-  build:
+  build-on-linux:
     # ubuntu-22.04 has liburing-dev.
     runs-on: ubuntu-22.04
 
