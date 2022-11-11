@@ -175,7 +175,7 @@ void io_service::io( RIO_CQ cq ) {
 }
 
 RIO_BUFFERID io_service::register_buffer( void *buffer, size_t size ) const {
-    return rio.RIORegisterBuffer( reinterpret_cast< char* >( buffer ), size );
+    return rio.RIORegisterBuffer( reinterpret_cast< char* >( buffer ), static_cast< DWORD >( size ) );
 }
 
 void io_service::unregister_buffer( RIO_BUFFERID id ) const {

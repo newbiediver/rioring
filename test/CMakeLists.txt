@@ -28,6 +28,7 @@ else()
 endif()
 
 if (WIN32)
+    target_link_options(BasicTest PUBLIC /LTCG)
     target_link_libraries(BasicTest PUBLIC ${RIORING} GTest::gtest_main)
 else()
     target_link_libraries(BasicTest PUBLIC ${RIORING} uring GTest::gtest_main)
