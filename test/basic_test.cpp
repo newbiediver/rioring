@@ -7,7 +7,6 @@
 #include <condition_variable>
 #include <gtest/gtest.h>
 #include "rioring.h"
-#include "rioring/io_buffer.h"
 
 using namespace std::chrono_literals;
 

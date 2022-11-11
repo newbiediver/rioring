@@ -10,7 +10,6 @@ using namespace std::chrono_literals;
 
 #include <cassert>
 #include <array>
-#include <chrono>
 #include "rioring/io_service.h"
 #include "rioring/io_context.h"
 #include "rioring/socket_object.h"
