@@ -81,6 +81,8 @@ public:
     bool submit( io_context *ctx );
     void stop();
 
+    [[nodiscard]] int running_count() const     { return running_io; }
+
     io_context *allocate_context();
 
 protected:

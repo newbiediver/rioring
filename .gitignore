@@ -34,3 +34,4 @@
 # For CLion
 .idea
 cmake-build*
+bin

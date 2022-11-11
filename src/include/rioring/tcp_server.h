@@ -40,7 +40,7 @@ public:
 protected:
     void on_thread() override;
 
-private:
+protected:
     explicit tcp_server( io_service *io );
     void error_occur( std::errc err );
 
@@ -82,14 +82,14 @@ public:
     bool run( unsigned short port );
     void stop();
 
+    bool is_running() const;
+
 protected:
+    explicit tcp_server( io_service *io );
     void io_accepting( int new_socket, struct ::sockaddr *addr );
+    void submit_accept();
 
     virtual void on_accept( tcp_socket_ptr &new_socket );
-
-private:
-    explicit tcp_server( io_service *io );
-    void submit_accept();
 
 private:
     friend class io_service;
