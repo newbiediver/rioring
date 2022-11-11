@@ -31,8 +31,8 @@ jobs:
     - name: Build
       # Build rioring library and unit test binary
       run: |
-        cmake --build ${{github.workspace}}/build --target rioring
-        cmake --build ${{github.workspace}}/build --target BasicTest
+        cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --target rioring
+        cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --target BasicTest
 
     - name: Test
       # Using google test

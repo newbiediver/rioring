@@ -144,7 +144,7 @@ void tcp_socket::submit_sending() {
     ctx->rq = request_queue;
     ctx->Offset = 0;
     ctx->BufferId = send_buffer_id;
-    ctx->Length = size;
+    ctx->Length = static_cast< ULONG >( size );
 
     current_io->submit( ctx );
 }

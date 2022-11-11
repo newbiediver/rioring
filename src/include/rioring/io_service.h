@@ -19,7 +19,7 @@
 
 namespace rioring {
 
-class io_context;
+struct io_context;
 
 class io_service : private thread_object {
 public:
@@ -66,7 +66,7 @@ private:
 
 namespace rioring {
 
-class io_context;
+struct io_context;
 
 /*
  io_uring 은 기본적으로 async 하지만 각 io_uring 의 스레드 컨텍스트를 구성하여 효율을 높임.

@@ -26,10 +26,10 @@ jobs:
       - name: Build
         # Build rioring library and unit test binary
         run: |
-          cmake --build ${{github.workspace}}\build --target rioring
-          cmake --build ${{github.workspace}}\build --target BasicTest
+          cmake --build ${{github.workspace}}\build --config ${{env.BUILD_TYPE}} --target rioring
+          cmake --build ${{github.workspace}}\build --config ${{env.BUILD_TYPE}} --target BasicTest
       - name: Test
         # Using google test
         # The basic test is [io start -> prepare client -> echo packet between server and client -> io stop]
         run: |
-          ${{github.workspace}}\bin\BasicTest.exe
+          ${{github.workspace}}\bin\Release\BasicTest.exe

@@ -10,7 +10,7 @@
 
 namespace rioring {
 
-template< class Obj >
+template< typename Obj >
 class simple_pool {
 public:
     simple_pool() = delete;
