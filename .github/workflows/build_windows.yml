@@ -16,20 +16,18 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
-      - uses: seanmiddleditch/gha-setup-ninja@master
-      - uses: microsoft/setup-msbuild@v1.1
+      - name: Configure MSBuild
+        uses: microsoft/setup-msbuild@v1.1
         with:
           msbuild-architecture: x64
       - name: Configure CMake
         # We use ninja-build
-        run: cmake -B ${{github.workspace}}\build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -G Ninja
-
+        run: cmake -B ${{github.workspace}}\build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -G "Visual Studio 17 2022"
       - name: Build
         # Build rioring library and unit test binary
         run: |
           cmake --build ${{github.workspace}}\build --target rioring
           cmake --build ${{github.workspace}}\build --target BasicTest
-
       - name: Test
         # Using google test
         # The basic test is [io start -> prepare client -> echo packet between server and client -> io stop]
