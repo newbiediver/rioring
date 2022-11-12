@@ -24,12 +24,12 @@ jobs:
         # We use ninja-build
         run: cmake -B ${{github.workspace}}\build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -G "Visual Studio 17 2022"
       - name: Build
-        # Build rioring library and unit test binary
+        # Build rioring library
         run: |
           cmake --build ${{github.workspace}}\build --config ${{env.BUILD_TYPE}} --target rioring
-          cmake --build ${{github.workspace}}\build --config ${{env.BUILD_TYPE}} --target BasicTest
       - name: Test
         # Using google test
         # The basic test is [io start -> prepare client -> echo packet between server and client -> io stop]
         run: |
+          cmake --build ${{github.workspace}}\build --config ${{env.BUILD_TYPE}} --target BasicTest
           ${{github.workspace}}\build\test\Release\BasicTest.exe
