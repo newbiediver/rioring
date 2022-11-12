@@ -21,6 +21,3 @@ endif()
 add_subdirectory(src)
 add_subdirectory(test)
 
-if (CMAKE_SYSTEM_NAME MATCHES "Linux")
-    install(TARGETS rioring ARCHIVE DESTINATION /usr/lib)
-endif ()

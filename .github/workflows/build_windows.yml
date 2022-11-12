@@ -32,4 +32,4 @@ jobs:
         # Using google test
         # The basic test is [io start -> prepare client -> echo packet between server and client -> io stop]
         run: |
-          ${{github.workspace}}\bin\Release\BasicTest.exe
+          ${{github.workspace}}\build\test\BasicTest.exe

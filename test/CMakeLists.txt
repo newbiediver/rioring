@@ -9,7 +9,6 @@ FetchContent_MakeAvailable(googletest)
 
 enable_testing()
 
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin)
 file(GLOB_RECURSE TEST_SOURCES LIST_DIRECTORIES false *.h *.cpp)
 
 include_directories(../src/include)

@@ -1,5 +1,3 @@
-set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/../lib)
-
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     set(LIBNAME rioringd)
 else()
@@ -17,8 +15,18 @@ else()
     set(CMAKE_CXX_FLAGS_RELEASE "-O2 -DNDEBUG")
 endif()
 
-file(GLOB_RECURSE SOURCE_FILES LIST_DIRECTORIES false *.h *.cpp)
+file(GLOB_RECURSE SOURCE_FILES LIST_DIRECTORIES false *.cpp)
 
 include_directories(include)
-
 add_library(${LIBNAME} STATIC ${SOURCE_FILES})
+
+if (CMAKE_SYSTEM_NAME MATCHES "Linux")
+    set(LIB_PATH ${CMAKE_INSTALL_PREFIX}/lib)
+    set(INCLUDE_PATH ${CMAKE_INSTALL_PREFIX}/include)
+    set(MAIN_HEADER_FILE ./include/rioring.h)
+    set(CONTENT_HEADER_FILES include/rioring)
+
+    install(TARGETS ${LIBNAME} ARCHIVE DESTINATION ${LIB_PATH})
+    install(DIRECTORY ${CONTENT_HEADER_FILES} DESTINATION ${INCLUDE_PATH})
+    install(FILES ${MAIN_HEADER_FILE} DESTINATION ${INCLUDE_PATH})
+endif ()
