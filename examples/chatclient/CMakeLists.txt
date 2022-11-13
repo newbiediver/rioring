@@ -18,14 +18,11 @@ if (WIN32)
     set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /DNDEBUG /O2 /Oi /Oy /GL")
     add_definitions(/DWIN32_LEAN_AND_MEAN /DNOMINMAX /D_AMD64_ /D_LIB /D_WIN32_WINNT=0x0A00)
     add_compile_options(/MP)
+    include_directories(${RIORING}/src/include)
 else()
     add_compile_options(-g -fthreadsafe-statics -fno-omit-frame-pointer -Wno-format-security)
     set(CMAKE_CXX_FLAGS_DEBUG "-O0 -D_DEBUG")
     set(CMAKE_CXX_FLAGS_RELEASE "-O2 -DNDEBUG")
-endif()
-
-if (WIN32)
-    include_directories(${RIORING}/src/include)
 endif()
 
 add_executable(chatclient main.cpp)
@@ -39,5 +36,7 @@ if (WIN32)
         target_link_libraries(chatclient PRIVATE rioring)
     endif()
 else()
+    # Must cmake --install to PATH directory
+    # If you do not, configure target_link_directories like WIN32
     target_link_libraries(chatclient PRIVATE rioring uring)
 endif()
