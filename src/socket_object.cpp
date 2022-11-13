@@ -2,21 +2,23 @@
 // Created by newbiediver on 22. 11. 5.
 //
 
+#include <utility>
+
 #include "rioring/io_service.h"
 #include "rioring/socket_object.h"
 
 namespace rioring {
 
 void socket_object::set_receive_event( socket_object::receive_event event ) {
-    recv_event = event;
+    recv_event = std::move( event );
 }
 
 void socket_object::set_send_complete_event( socket_object::send_event event ) {
-    send_complete_event = event;
+    send_complete_event = std::move( event );
 }
 
 void socket_object::set_close_event( socket_object::close_event event ) {
-    socket_close_event = event;
+    socket_close_event = std::move( event );
 }
 
 socket_ptr socket_object::cast_socket_ptr() {

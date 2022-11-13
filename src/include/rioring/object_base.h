@@ -20,7 +20,7 @@ public:
     object_base();
     virtual ~object_base() = default;
 
-    using error_callback = void (*)(object_ptr &, const std::error_code &);
+    using error_callback = std::function< void( object_ptr &, const std::error_code & ) >;
     void set_error_callback( error_callback callback );
 
     size_t object_id() const;

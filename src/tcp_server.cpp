@@ -19,7 +19,7 @@ tcp_server_ptr tcp_server::create( io_service *io ) {
 }
 
 void tcp_server::set_accept_event( accept_event event ) {
-    accept_event_callback = event;
+    accept_event_callback = std::move( event );
 }
 
 void tcp_server::error_occur( std::errc err ) {
@@ -93,6 +93,7 @@ void tcp_server::on_thread() {
 #else
 
 #include <cstring>
+#include <utility>
 
 namespace rioring {
 
@@ -107,7 +108,7 @@ tcp_server::tcp_server( io_service *io ) : current_io{ io } {
 }
 
 void tcp_server::set_accept_event( tcp_server::accept_event event ) {
-    new_connect_event = event;
+    new_connect_event = std::move( event );
 }
 
 bool tcp_server::run( unsigned short port ) {

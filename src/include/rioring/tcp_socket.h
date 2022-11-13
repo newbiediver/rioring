@@ -15,12 +15,12 @@ class tcp_socket;
 using tcp_socket_ptr = std::shared_ptr< tcp_socket >;
 
 // Transform to downstream
-inline tcp_socket_ptr to_tcp_socket_ptr( object_ptr &s ) {
+inline tcp_socket_ptr to_tcp_socket_ptr( const object_ptr &s ) {
     return std::dynamic_pointer_cast< tcp_socket, object_base >( s );
 }
 
 // Transform to downstream
-inline tcp_socket_ptr to_tcp_socket_ptr( socket_ptr &s ) {
+inline tcp_socket_ptr to_tcp_socket_ptr( const socket_ptr &s ) {
     return std::dynamic_pointer_cast< tcp_socket, socket_object >( s );
 }
 

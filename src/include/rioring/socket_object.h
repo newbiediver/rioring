@@ -26,15 +26,15 @@ class socket_object;
 
 using socket_ptr = std::shared_ptr< socket_object >;
 
-inline socket_ptr to_socket_ptr( object_ptr &s ) {
+inline socket_ptr to_socket_ptr( const object_ptr &s ) {
     return std::dynamic_pointer_cast< socket_object, object_base >( s );
 }
 
 class socket_object : public object_base {
 public:
-    using receive_event = void (*)(socket_ptr&, io_buffer*);
-    using send_event = void (*)(socket_ptr&);
-    using close_event = void (*)(socket_ptr&);
+    using receive_event = std::function< void( socket_ptr&, io_buffer* ) >;
+    using send_event = std::function< void( socket_ptr& ) >;
+    using close_event = std::function< void( socket_ptr& ) >;
 
     socket_object() = delete;
     ~socket_object() override = default;

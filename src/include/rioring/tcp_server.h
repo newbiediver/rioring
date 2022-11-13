@@ -20,13 +20,13 @@ class io_service;
 using tcp_server_ptr = std::shared_ptr< tcp_server >;
 
 // Transform to downstream
-inline tcp_server_ptr to_tcp_server_ptr( object_ptr &s ) {
+inline tcp_server_ptr to_tcp_server_ptr( const object_ptr &s ) {
     return std::dynamic_pointer_cast< tcp_server, object_base >( s );
 }
 
 class tcp_server : private thread_object, public object_base {
 public:
-    using accept_event = void (*)(tcp_socket_ptr&);
+    using accept_event = std::function< void( tcp_socket_ptr& ) >;
 
     tcp_server() = delete;
     ~tcp_server() override = default;
@@ -65,13 +65,13 @@ class tcp_server;
 using tcp_server_ptr = std::shared_ptr< tcp_server >;
 
 // Transform to downstream
-inline tcp_server_ptr to_tcp_server_ptr( object_ptr &s ) {
+inline tcp_server_ptr to_tcp_server_ptr( const object_ptr &s ) {
     return std::dynamic_pointer_cast< tcp_server, object_base >( s );
 }
 
 class tcp_server : public object_base {
 public:
-    typedef void (*accept_event) (tcp_socket_ptr&);
+    using accept_event = std::function< void( tcp_socket_ptr& ) >;
 
     tcp_server() = delete;
     ~tcp_server() override = default;
@@ -81,8 +81,6 @@ public:
 
     bool run( unsigned short port );
     void stop();
-
-    bool is_running() const;
 
 protected:
     explicit tcp_server( io_service *io );
