@@ -6,9 +6,10 @@
 #define RIORING_CONTEXT_H
 
 #include <memory>
-#include <mswsockdef.h>
 
 #ifdef WIN32
+
+#include <mswsockdef.h>
 
 namespace rioring {
 
