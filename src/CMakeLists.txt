@@ -1,3 +1,7 @@
+if (WIN32)
+    set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/lib)
+endif()
+
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     set(LIBNAME rioringd)
 else()

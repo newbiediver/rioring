@@ -3,6 +3,7 @@
 //
 
 #include <cstring>
+#include <string>
 #include "client.h"
 #include "scheme.h"
 #include "pool.h"

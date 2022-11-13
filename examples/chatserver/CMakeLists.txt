@@ -24,6 +24,10 @@ else()
     set(CMAKE_CXX_FLAGS_RELEASE "-O2 -DNDEBUG")
 endif()
 
+if (WIN32)
+    include_directories(${RIORING}/src/include)
+endif()
+
 add_executable(chatserver
         main.cpp
         client.cpp
@@ -32,7 +36,12 @@ add_executable(chatserver
 
 if (WIN32)
     target_link_options(chatserver PRIVATE /LTCG)
-    target_link_libraries(chatserver PRIVATE rioring)
+    target_link_directories(chatserver PRIVATE ${RIORING}/lib)
+    if (${CMAKE_BUILD_TYPE} STREQUAL "Debug")
+        target_link_libraries(chatserver PRIVATE rioringd)
+    else()
+        target_link_libraries(chatserver PRIVATE rioring)
+    endif()
 else()
     target_link_libraries(chatserver PRIVATE rioring uring)
 endif()
