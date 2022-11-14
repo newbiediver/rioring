@@ -139,7 +139,7 @@ void tcp_socket::submit_receiving() {
 }
 
 void tcp_socket::submit_sending() {
-    auto size = std::min< size_t >( send_buffer.size(), DATA_BUFFER_SIZE );
+    auto size = std::min< size_t >( send_buffer.size(), RIORING_DATA_BUFFER_SIZE );
     std::memcpy( std::data( send_bind_buffer ), *send_buffer, size );
 
     auto ctx = current_io->allocate_context();
