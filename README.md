@@ -19,6 +19,10 @@ This i/o library does support only built-in socket object. No file descriptor su
 ***노트: 현재 tcp socket 만 지원합니다. udp socket 은 곧 업데이트 예정입니다.*** <br />
 ***NOTE: Now we support only tcp socket. udp socket will update soon.***
 
+***노트: 기여자는 dev branch 에 PR 요청하시기 바랍니다. 곧 기여자 정책에 대해서 업데이트 될 예정입니다.*** <br />
+***NOTE: Please contributor request PR to dev branch. We will update about contributor policy soon.***
+
+
 # Build & Install
 ### 1. Windows Platform
 ```shell
