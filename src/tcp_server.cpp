@@ -36,9 +36,9 @@ bool tcp_server::run( unsigned short port ) {
         return false;
     }
 
-    int on = 1, off = 0;
-    setsockopt( server_socket, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast< const char* >( &on ), sizeof( int ) );
-    setsockopt( server_socket, IPPROTO_IPV6, IPV6_V6ONLY, reinterpret_cast< const char* >( &off ), sizeof( int ) );
+    constexpr int reuse = RIORING_REUSE_ADDR, v6only = RIORING_ONLY_IPV6;
+    setsockopt( server_socket, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast< const char* >( &reuse ), sizeof( int ) );
+    setsockopt( server_socket, IPPROTO_IPV6, IPV6_V6ONLY, reinterpret_cast< const char* >( &v6only ), sizeof( int ) );
 
     struct ::sockaddr_in6 in{};
     memset( &in, 0, sizeof( in ) );
@@ -122,9 +122,9 @@ bool tcp_server::run( unsigned short port ) {
         return false;
     }
 
-    int on = 1, off = 0;
-    setsockopt( server_socket, SOL_SOCKET, SO_REUSEADDR, &on, sizeof( int ) );
-    setsockopt( server_socket, IPPROTO_IPV6, IPV6_V6ONLY, &off, sizeof( int ) );
+    constexpr int reuse = RIORING_REUSE_ADDR, v6only = RIORING_ONLY_IPV6;
+    setsockopt( server_socket, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof( int ) );
+    setsockopt( server_socket, IPPROTO_IPV6, IPV6_V6ONLY, &v6only, sizeof( int ) );
 
     ::sockaddr_in6 in{};
     memset( &in, 0, sizeof( in ) );

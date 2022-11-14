@@ -3,6 +3,7 @@
 //
 
 #include <chrono>
+#include <rioring/predefined.h>
 
 using namespace std::chrono_literals;
 
@@ -39,7 +40,7 @@ static void cleanup_winsock() {
     g_init_winsock = false;
 }
 
-io_service::io_service() : context_pool{ 1000 } {
+io_service::io_service() : context_pool{ RIORING_CONTEXT_POOL_SIZE } {
     if ( !g_init_winsock ) {
         start_winsock();
     }
@@ -204,7 +205,7 @@ RIO_RQ io_service::create_request_queue( SOCKET s ) {
 
 namespace rioring {
 
-io_service::io_service() : context_pool{ 100 } {}
+io_service::io_service() : context_pool{ RIORING_CONTEXT_POOL_SIZE } {}
 
 bool io_service::run( int concurrency ) {
     if ( concurrency < 1 ) return false;
@@ -295,7 +296,7 @@ void io_service::on_thread() {
     io_uring ring{};
     io_uring_params params{};
 
-    if ( auto r = io_uring_queue_init_params( 1024, &ring, &params );
+    if ( auto r = io_uring_queue_init_params( RIORING_IO_URING_ENTRIES, &ring, &params );
             r != 0 || !( params.features & IORING_FEAT_FAST_POLL ) ) {
         assert( ( params.features & IORING_FEAT_FAST_POLL ) && "Kernel does not support fast poll!" );
         int *p = nullptr;

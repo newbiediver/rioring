@@ -50,6 +50,10 @@ bool tcp_socket::connect( std::string_view address, unsigned short port ) {
     }
 
     freeaddrinfo( addr_info );
+
+    if ( socket_handler == INVALID_SOCKET ) {
+        return false;
+    }
     on_active();
 
     return true;
@@ -90,20 +94,20 @@ void tcp_socket::on_active() {
     connected_flag = true;
 
     constexpr linger lingerArg{ 1, 0 };
-    constexpr int arg = 1;
+    constexpr int arg1 = RIORING_TCP_NODELAY, arg2 = RIORING_REUSE_ADDR, arg3 = RIORING_KEEP_ALIVE;
     tcp_keepalive keepAlive{};
     DWORD byteReturn = 0;
-    keepAlive.onoff = 1;
-    keepAlive.keepalivetime = 2000;
-    keepAlive.keepaliveinterval = 1000;
+    keepAlive.onoff = RIORING_KEEP_ALIVE;
+    keepAlive.keepalivetime = RIORING_KEEP_ALIVE_IDLE * 1000;
+    keepAlive.keepaliveinterval = RIORING_KEEP_ALIVE_INTERVAL * 1000;
 
-    recv_buffer.assign( DATA_BUFFER_SIZE );
-    send_buffer.assign( DATA_BUFFER_SIZE );
+    recv_buffer.assign( RIORING_DATA_BUFFER_SIZE );
+    send_buffer.assign( RIORING_DATA_BUFFER_SIZE );
 
-    setsockopt( socket_handler, IPPROTO_TCP, TCP_NODELAY, reinterpret_cast< const char* >( &arg ), sizeof( int ) );
+    setsockopt( socket_handler, IPPROTO_TCP, TCP_NODELAY, reinterpret_cast< const char* >( &arg1 ), sizeof( int ) );
     setsockopt( socket_handler, SOL_SOCKET, SO_LINGER, reinterpret_cast< const char* >( &lingerArg ), sizeof( lingerArg ) );
-    setsockopt( socket_handler, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast< const char* >( &arg ), sizeof( int ) );
-    setsockopt( socket_handler, SOL_SOCKET, SO_KEEPALIVE, reinterpret_cast< const char* >( &arg ), sizeof( int ) );
+    setsockopt( socket_handler, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast< const char* >( &arg2 ), sizeof( int ) );
+    setsockopt( socket_handler, SOL_SOCKET, SO_KEEPALIVE, reinterpret_cast< const char* >( &arg3 ), sizeof( int ) );
     WSAIoctl( socket_handler, SIO_KEEPALIVE_VALS, &keepAlive, sizeof( tcp_keepalive ), nullptr, 0, &byteReturn, nullptr, nullptr );
 
     socket_object::on_active();
@@ -129,7 +133,7 @@ void tcp_socket::submit_receiving() {
     ctx->rq = request_queue;
     ctx->Offset = 0;
     ctx->BufferId = recv_buffer_id;
-    ctx->Length = DATA_BUFFER_SIZE;
+    ctx->Length = RIORING_DATA_BUFFER_SIZE;
 
     current_io->submit( ctx );
 }
@@ -201,7 +205,6 @@ bool tcp_socket::connect( std::string_view address, unsigned short port ) {
     auto addr = resolve( resolve_type::tcp, address, port );
     if ( !addr ) return false;
 
-
     for ( auto a = addr; a != nullptr; a = a->ai_next ) {
         int s = socket( a->ai_family, a->ai_socktype, a->ai_protocol );
         if ( s < 0 ) {
@@ -218,6 +221,10 @@ bool tcp_socket::connect( std::string_view address, unsigned short port ) {
     }
 
     freeaddrinfo( addr );
+    if ( socket_handler == 0 ) {
+        return false;
+    }
+
     on_active();
 
     return true;
@@ -254,17 +261,17 @@ bool tcp_socket::send( const void *bytes, size_t size ) {
 void tcp_socket::on_active() {
     connected_flag = true;
 
-    constexpr int arg = 1;
-    constexpr int idle = 2, cnt = 3, interval = 2;
+    constexpr int arg1 = RIORING_TCP_NODELAY, arg2 = RIORING_REUSE_ADDR, arg3 = RIORING_KEEP_ALIVE;
+    constexpr int idle = RIORING_KEEP_ALIVE_IDLE, cnt = RIORING_KEEP_ALIVE_CNT, interval = RIORING_KEEP_ALIVE_INTERVAL;
     constexpr linger lg{ 1, 0 };
 
-    recv_buffer.assign( DATA_BUFFER_SIZE );
-    send_buffer.assign( DATA_BUFFER_SIZE );
+    recv_buffer.assign( RIORING_DATA_BUFFER_SIZE );
+    send_buffer.assign( RIORING_DATA_BUFFER_SIZE );
 
-    setsockopt( socket_handler, IPPROTO_TCP, TCP_NODELAY, reinterpret_cast< const void* >( &arg ), sizeof( int ) );
+    setsockopt( socket_handler, IPPROTO_TCP, TCP_NODELAY, reinterpret_cast< const void* >( &arg1 ), sizeof( int ) );
     setsockopt( socket_handler, SOL_SOCKET, SO_LINGER, &lg, sizeof( lg ) );
-    setsockopt( socket_handler, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast< const void* >( &arg ), sizeof( int ) );
-    setsockopt( socket_handler, SOL_SOCKET, SO_KEEPALIVE, reinterpret_cast< const void* >( &arg ), sizeof( int ) );
+    setsockopt( socket_handler, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast< const void* >( &arg2 ), sizeof( int ) );
+    setsockopt( socket_handler, SOL_SOCKET, SO_KEEPALIVE, reinterpret_cast< const void* >( &arg3 ), sizeof( int ) );
     setsockopt( socket_handler, SOL_TCP, TCP_KEEPIDLE, reinterpret_cast< const void* >( &idle ), sizeof( int ) );
     setsockopt( socket_handler, SOL_TCP, TCP_KEEPCNT, reinterpret_cast< const void* >( &cnt ), sizeof( int ) );
     setsockopt( socket_handler, SOL_TCP, TCP_KEEPINTVL, reinterpret_cast< const void* >( &interval ), sizeof( int ) );
@@ -287,7 +294,7 @@ void tcp_socket::submit_receiving() {
     ctx->handler = shared_from_this();
     ctx->type = io_context::io_type::read;
     ctx->iov.iov_base = std::data( recv_bind_buffer );
-    ctx->iov.iov_len = DATA_BUFFER_SIZE;
+    ctx->iov.iov_len = RIORING_DATA_BUFFER_SIZE;
 
     current_io->submit( ctx );
 }

@@ -62,6 +62,8 @@ private:
 
 #else
 
+// liburing-dev 설치
+// You have to install 'liburing-dev' using your package manager (like apt, yum)
 #include <liburing.h>
 
 namespace rioring {

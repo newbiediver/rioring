@@ -24,7 +24,7 @@ public:
         }
     }
 
-    explicit simple_pool( size_t init_size = 100 ) {
+    explicit simple_pool( size_t init_size ) {
         for ( size_t i = 0; i < init_size; ++i ) {
             pool.push_back( new Obj );
         }

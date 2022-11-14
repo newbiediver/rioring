@@ -11,6 +11,7 @@
 #include <netinet/in.h>
 #endif
 #include <array>
+#include "predefined.h"
 #include "object_base.h"
 #include "thread_lock.h"
 #include "io_context.h"
@@ -18,8 +19,6 @@
 #include "io_double_buffer.h"
 
 namespace rioring {
-
-#define DATA_BUFFER_SIZE (1024*64)
 
 class io_service;
 class socket_object;
@@ -88,10 +87,10 @@ protected:
     SOCKET          socket_handler{ INVALID_SOCKET };
     RIO_RQ          request_queue{ nullptr };
     RIO_BUFFERID    recv_buffer_id{ nullptr }, send_buffer_id{ nullptr };
-    std::array< unsigned char, DATA_BUFFER_SIZE > recv_bind_buffer{ 0 }, send_bind_buffer{ 0 };
+    std::array< unsigned char, RIORING_DATA_BUFFER_SIZE > recv_bind_buffer{ 0 }, send_bind_buffer{ 0 };
 #else
     int             socket_handler{ 0 };
-    std::array< unsigned char, DATA_BUFFER_SIZE > recv_bind_buffer{ 0 };
+    std::array< unsigned char, RIORING_DATA_BUFFER_SIZE > recv_bind_buffer{ 0 };
 #endif
 
     unsigned short  remote_port_number{ 0 };

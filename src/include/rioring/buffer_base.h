@@ -5,6 +5,8 @@
 #ifndef RIORING_BUFFER_BASE_H
 #define RIORING_BUFFER_BASE_H
 
+#include <cstddef>
+
 namespace rioring {
 
 class buffer_base {
