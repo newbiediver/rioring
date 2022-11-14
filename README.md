@@ -22,7 +22,26 @@ This i/o library does support only built-in socket object. No file descriptor su
 ***노트: 기여자는 dev branch 에 PR 요청하시기 바랍니다. 곧 기여자 정책에 대해서 업데이트 될 예정입니다.*** <br />
 ***NOTE: Please contributor request PR to dev branch. We will update about contributor policy soon.***
 
-
+# Compiler
+***노트: clang 컴파일러는 테스트 해보지 않았습니다.***<br />
+***NOTE: clang compiler has not tested.***
+1. Win32
+```
+  Minumum - MSVC 16.0 (Visual Studio 2019)
+  Recommend - MSVC 17.0 (Visual Studio 2022)
+```
+  
+2. Linux
+```
+  Minumum - gcc 9.0
+  Recommend - gcc 11.0
+```
+   
+3. Arch
+```
+  x64/amd64
+```
+  
 # Build & Install
 ### 1. Windows Platform
 ```shell
