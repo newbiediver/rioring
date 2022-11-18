@@ -9,6 +9,7 @@
 #include "rioring/thread_object.h"
 #include "rioring/thread_lock.h"
 #include "rioring/simple_pool.h"
+#include "rioring/io_context.h"
 
 #ifdef WIN32
 
@@ -68,8 +69,6 @@ private:
 
 namespace rioring {
 
-struct io_context;
-
 /*
  io_uring 은 기본적으로 async 하지만 각 io_uring 의 스레드 컨텍스트를 구성하여 효율을 높임.
  io_service 는 file descriptor 는 지원하지 않으며 현재는 오직 socket stream 만 지원함.
@@ -87,7 +86,7 @@ public:
 
     [[nodiscard]] int running_count() const     { return running_io; }
 
-    io_context *allocate_context();
+    io_context *allocate_context( context_type type );
 
 protected:
     void on_thread() override;
@@ -95,11 +94,13 @@ protected:
 private:
     void io( io_uring *ring );
     void deallocate_context( io_context *ctx );
+    sockaddr *current_sockaddr( io_context *ctx );
 
 private:
     spin_lock                   lock;
     std::vector< io_uring* >    io_array;
     simple_pool< io_context >   context_pool;
+    simple_pool< io_extra_context > cwa_pool;
     std::atomic_int             running_io{ 0 };
 
     thread_generator            tg;

@@ -13,7 +13,7 @@ using namespace std::chrono_literals;
 rioring::io_service io;
 rioring::tcp_server_ptr server;
 
-void on_read( rioring::socket_ptr &socket, rioring::io_buffer *buffer ) {
+void on_read( rioring::socket_ptr &socket, rioring::io_buffer *buffer, sockaddr *addr [[maybe_unused]] ) {
     std::array< unsigned char, 20 > buf{ 0 };
     auto tcp = rioring::to_tcp_socket_ptr( socket );
     if ( buffer->read( &buf[0], buffer->size() ) ) {
@@ -39,7 +39,7 @@ std::promise< std::string > feedback;
 std::mutex lock;
 std::condition_variable socket_closed;
 
-void on_client_read( rioring::socket_ptr &socket, rioring::io_buffer *buffer ) {
+void on_client_read( rioring::socket_ptr &socket, rioring::io_buffer *buffer, sockaddr *addr [[maybe_unused]] ) {
     std::array< unsigned char, 20 > buf{ 0 };
     if ( buffer->read( &buf[0], buffer->size() ) ) {
         buffer->pop( buffer->size() );

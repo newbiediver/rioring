@@ -205,7 +205,7 @@ RIO_RQ io_service::create_request_queue( SOCKET s ) {
 
 namespace rioring {
 
-io_service::io_service() : context_pool{ RIORING_CONTEXT_POOL_SIZE } {}
+io_service::io_service() : context_pool{ RIORING_CONTEXT_POOL_SIZE }, cwa_pool{ RIORING_CONTEXT_POOL_SIZE } {}
 
 bool io_service::run( int concurrency ) {
     if ( concurrency < 1 ) return false;
@@ -233,7 +233,10 @@ void io_service::stop() {
     tg.wait_for_terminate();
 }
 
-io_context *io_service::allocate_context() {
+io_context *io_service::allocate_context( context_type type ) {
+    if ( type == context_type::extra ) {
+        return cwa_pool.pop();
+    }
     return context_pool.pop();
 }
 
@@ -242,7 +245,23 @@ void io_service::deallocate_context( io_context *ctx ) {
     ctx->iov.iov_base = nullptr;
     ctx->iov.iov_len = 0;
 
-    context_pool.push( ctx );
+    if ( auto extra = ctx->to_extra(); extra != nullptr ) {
+        cwa_pool.push( extra );
+    } else {
+        context_pool.push( ctx );
+    }
+}
+
+sockaddr *io_service::current_sockaddr( io_context *ctx ) {
+    sockaddr *sa;
+    if ( ctx->to_extra() ) {
+        sa = (sockaddr*)&ctx->to_extra()->addr;
+    } else {
+        auto socket = to_socket_ptr( ctx->handler );
+        sa = socket->socket_address();
+    }
+
+    return sa;
 }
 
 bool io_service::submit( io_context *ctx ) {
@@ -267,12 +286,20 @@ bool io_service::submit( io_context *ctx ) {
         break;
     case io_context::io_type::read:
         if ( auto socket = to_socket_ptr( ctx->handler ); socket != nullptr ) {
-            io_uring_prep_readv( sqe, socket->socket_handler, &ctx->iov, 1, 0 );
+            if ( socket->protocol() == socket_object::type::tcp ) {
+                io_uring_prep_readv( sqe, socket->socket_handler, &ctx->iov, 1, 0 );
+            } else {
+                io_uring_prep_recvmsg( sqe, socket->socket_handler, &ctx->to_extra()->msg, 0 );
+            }
         }
         break;
     case io_context::io_type::write:
         if ( auto socket = to_socket_ptr( ctx->handler ); socket != nullptr ) {
-            io_uring_prep_writev( sqe, socket->socket_handler, &ctx->iov, 1, 0 );
+            if ( socket->protocol() == socket_object::type::tcp ) {
+                io_uring_prep_writev( sqe, socket->socket_handler, &ctx->iov, 1, 0 );
+            } else {
+                io_uring_prep_sendmsg( sqe, socket->socket_handler, &ctx->to_extra()->msg, 0 );
+            }
         }
         break;
     case io_context::io_type::shutdown:
@@ -283,6 +310,8 @@ bool io_service::submit( io_context *ctx ) {
                 io_uring_prep_shutdown( sqe, server->server_socket, 0 );
             }
         }
+        break;
+    default:
         break;
     }
 
@@ -342,16 +371,16 @@ void io_service::io( io_uring *ring ) {
             break;
         case io_context::io_type::read:
             if ( cqe->res > 0 ) {
-                socket->io_received( cqe->res );
+                socket->io_received( cqe->res, current_sockaddr( context ) );
             } else {
                 socket->io_shutdown();
             }
             break;
         case io_context::io_type::write:
             if ( cqe->res > 0 ) {
-                socket->io_sent( cqe->res );
+                socket->io_sent( cqe->res, current_sockaddr( context ) );
             } else {
-                socket->io_error( std::make_error_code( std::errc( -errno ) ) );
+                socket->io_error( std::make_error_code( std::errc( -cqe->res ) ) );
             }
             break;
         case io_context::io_type::shutdown:
@@ -373,6 +402,8 @@ void io_service::io( io_uring *ring ) {
                 }
             }
 
+            break;
+        default:
             break;
         }
 

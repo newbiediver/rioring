@@ -177,17 +177,18 @@ void tcp_socket::set_remote_info( struct ::sockaddr *addr ) {
 #include <netinet/tcp.h>
 #include <arpa/inet.h>
 #include <csignal>
+#include <cstring>
 #include "rioring/io_service.h"
 #include "rioring/tcp_socket.h"
 #include "rioring/address_resolver.h"
 
 namespace rioring {
 
-tcp_socket::tcp_socket( rioring::io_service *io ) : socket_object{ io } {
+tcp_socket::tcp_socket( rioring::io_service *io ) : socket_object{ io, socket_object::type::tcp } {
 
 }
 
-tcp_socket::tcp_socket( rioring::io_service *io, int sock ) : socket_object{ io, sock } {
+tcp_socket::tcp_socket( rioring::io_service *io, int sock ) : socket_object{ io, socket_object::type::tcp, sock } {
 
 }
 
@@ -202,7 +203,7 @@ tcp_socket_ptr tcp_socket::create( io_service *io, int sock ) {
 }
 
 bool tcp_socket::connect( std::string_view address, unsigned short port ) {
-    auto addr = resolve( resolve_type::tcp, address, port );
+    auto addr = resolve( address, port );
     if ( !addr ) return false;
 
     for ( auto a = addr; a != nullptr; a = a->ai_next ) {
@@ -230,19 +231,6 @@ bool tcp_socket::connect( std::string_view address, unsigned short port ) {
     return true;
 }
 
-void tcp_socket::close( tcp_socket::close_type type ) {
-    if ( type == close_type::graceful ) {
-        std::scoped_lock sc{ lock };
-        if ( send_buffer.empty() ) {
-            submit_shutdown();
-        } else {
-            shutdown_gracefully = true;
-        }
-    } else {
-        submit_shutdown();
-    }
-}
-
 bool tcp_socket::send( const void *bytes, size_t size ) {
     if ( shutdown_gracefully ) return false;
     if ( !connected() ) return false;
@@ -250,7 +238,7 @@ bool tcp_socket::send( const void *bytes, size_t size ) {
     std::scoped_lock sc{ lock };
     if ( send_buffer.empty() ) {
         send_buffer.push( static_cast< const unsigned char* >( bytes ), size );
-        submit_sending();
+        submit_sending( nullptr );
     } else {
         send_buffer.push( static_cast< const unsigned char* >( bytes ), size );
     }
@@ -279,42 +267,11 @@ void tcp_socket::on_active() {
     submit_receiving();
 }
 
-void tcp_socket::on_send_complete() {
-    if ( shutdown_gracefully ) {
-        submit_shutdown();
-    }
-}
-
 void tcp_socket::on_shutdown() {
     connected_flag = false;
-}
 
-void tcp_socket::submit_receiving() {
-    auto ctx = current_io->allocate_context();
-    ctx->handler = shared_from_this();
-    ctx->type = io_context::io_type::read;
-    ctx->iov.iov_base = std::data( recv_bind_buffer );
-    ctx->iov.iov_len = RIORING_DATA_BUFFER_SIZE;
-
-    current_io->submit( ctx );
-}
-
-void tcp_socket::submit_sending() {
-    auto ctx = current_io->allocate_context();
-    ctx->handler = shared_from_this();
-    ctx->type = io_context::io_type::write;
-    ctx->iov.iov_base = const_cast< unsigned char* >( *send_buffer );
-    ctx->iov.iov_len = send_buffer.size();
-
-    current_io->submit( ctx );
-}
-
-void tcp_socket::submit_shutdown() {
-    auto ctx = current_io->allocate_context();
-    ctx->handler = shared_from_this();
-    ctx->type = io_context::io_type::shutdown;
-
-    current_io->submit( ctx );
+    recv_buffer.destroy();
+    send_buffer.destroy();
 }
 
 void tcp_socket::set_remote_info( struct ::sockaddr *addr ) {
@@ -322,6 +279,8 @@ void tcp_socket::set_remote_info( struct ::sockaddr *addr ) {
         auto in = reinterpret_cast< ::sockaddr_in* >( addr );
         remote_port_number = ntohs( in->sin_port );
         inet_ntop( AF_INET, &in->sin_addr, std::data( remote_v4_addr_string ), std::size( remote_v4_addr_string ) );
+
+        std::memcpy( &addr_storage, in, sizeof( *in ) );
     } else {
         auto in = reinterpret_cast< ::sockaddr_in6* >( addr );
         remote_port_number = ntohs( in->sin6_port );
@@ -330,7 +289,29 @@ void tcp_socket::set_remote_info( struct ::sockaddr *addr ) {
         const auto bytes = in->sin6_addr.s6_addr;
         const auto v4 = reinterpret_cast< const ::in_addr* >( bytes + 12 );
         inet_ntop( AF_INET, v4, std::data( remote_v4_addr_string ), std::size( remote_v4_addr_string ) );
+
+        std::memcpy( &addr_storage, in, sizeof( *in ) );
     }
+}
+
+void tcp_socket::submit_receiving() {
+    auto ctx = current_io->allocate_context( context_type::base );
+    ctx->handler = shared_from_this();
+    ctx->type = io_context::io_type::read;
+    ctx->iov.iov_base = std::data( recv_bind_buffer );
+    ctx->iov.iov_len = RIORING_DATA_BUFFER_SIZE;
+
+    current_io->submit( ctx );
+}
+
+void tcp_socket::submit_sending( sockaddr *addr [[maybe_unused]] ) {
+    auto ctx = current_io->allocate_context( context_type::base );
+    ctx->handler = shared_from_this();
+    ctx->type = io_context::io_type::write;
+    ctx->iov.iov_base = const_cast< unsigned char* >( *send_buffer );
+    ctx->iov.iov_len = send_buffer.size();
+
+    current_io->submit( ctx );
 }
 
 }

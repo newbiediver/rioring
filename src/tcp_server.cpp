@@ -92,7 +92,6 @@ void tcp_server::on_thread() {
 
 #else
 
-#include <cstring>
 #include <utility>
 
 namespace rioring {
@@ -126,9 +125,7 @@ bool tcp_server::run( unsigned short port ) {
     setsockopt( server_socket, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof( int ) );
     setsockopt( server_socket, IPPROTO_IPV6, IPV6_V6ONLY, &v6only, sizeof( int ) );
 
-    ::sockaddr_in6 in{};
-    memset( &in, 0, sizeof( in ) );
-
+    sockaddr_in6 in{};
     in.sin6_family = AF_INET6;
     in.sin6_port = htons( port );
     in.sin6_addr = in6addr_any;
@@ -149,7 +146,7 @@ bool tcp_server::run( unsigned short port ) {
 }
 
 void tcp_server::stop() {
-    auto ctx = current_io->allocate_context();
+    auto ctx = current_io->allocate_context( context_type::base );
     ctx->handler = shared_from_this();
     ctx->type = io_context::io_type::shutdown;
 
@@ -157,7 +154,7 @@ void tcp_server::stop() {
 }
 
 void tcp_server::submit_accept() {
-    auto ctx = current_io->allocate_context();
+    auto ctx = current_io->allocate_context( context_type::base );
     ctx->handler = shared_from_this();
     ctx->type = io_context::io_type::accept;
 
