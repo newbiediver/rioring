@@ -9,6 +9,7 @@
 #include <netdb.h>
 #endif
 #include <string>
+#include <cstring>
 
 namespace rioring {
 
