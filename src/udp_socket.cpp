@@ -46,7 +46,7 @@ void udp_socket::on_active() {
     constexpr linger lg{ 1, 0 };
     constexpr int reuse = RIORING_REUSE_ADDR;
     setsockopt( socket_handler, SOL_SOCKET, SO_LINGER, reinterpret_cast< const char* >( &lg ), sizeof( lg ) );
-    setsockopt( socket_handler, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast< const void* >( &reuse ), sizeof( int ) );
+    setsockopt( socket_handler, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast< const char* >( &reuse ), sizeof( int ) );
 
     socket_object::on_active();
     submit_receiving();

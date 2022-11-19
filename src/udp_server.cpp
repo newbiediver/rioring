@@ -25,7 +25,7 @@ bool udp_server::run( unsigned short port ) {
         io_error( std::make_error_code( std::errc( WSAGetLastError() ) ) );
     };
 
-    socket_handler = WSASocketW( AF_INET, SOCK_DGRAM, IPPROTO_UDP, nullptr, 0, WSA_FLAG_REGISTERED_IO );
+    socket_handler = WSASocketW( AF_INET6, SOCK_DGRAM, IPPROTO_UDP, nullptr, 0, WSA_FLAG_REGISTERED_IO );
     if ( socket_handler == INVALID_SOCKET ) {
         error_occur();
         return false;
@@ -48,9 +48,9 @@ bool udp_server::run( unsigned short port ) {
     in.sin6_addr = in6addr_any;
 
 #ifdef WIN32
-    constexpr char reuse = RIORING_REUSE_ADDR, v6only = RIORING_ONLY_IPV6;
-    setsockopt( socket_handler, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof( char ) );
-    setsockopt( socket_handler, IPPROTO_IPV6, IPV6_V6ONLY, &v6only, sizeof( char ) );
+    constexpr int reuse = RIORING_REUSE_ADDR, v6only = RIORING_ONLY_IPV6;
+    setsockopt( socket_handler, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast< const char* >( &reuse ), sizeof( int ) );
+    setsockopt( socket_handler, IPPROTO_IPV6, IPV6_V6ONLY, reinterpret_cast< const char* >( &v6only ), sizeof( int ) );
 
     if ( bind( socket_handler, reinterpret_cast< ::sockaddr* >( &in ), sizeof( in ) ) == SOCKET_ERROR ) {
         error_occur();
