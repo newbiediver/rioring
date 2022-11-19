@@ -25,6 +25,11 @@ public:
     io_service();
     ~io_service() noexcept override;
 
+#ifdef WIN32
+    static bool initialize_winsock();
+    static void deinitialize_winsock();
+#endif
+
     bool run( int concurrency );
     bool submit( io_context *ctx );
     void stop();

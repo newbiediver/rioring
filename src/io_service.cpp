@@ -12,7 +12,6 @@ using namespace std::chrono_literals;
 #include <cassert>
 #include <array>
 #include "rioring/io_service.h"
-#include "rioring/io_context.h"
 #include "rioring/socket_object.h"
 
 namespace rioring {
@@ -23,27 +22,20 @@ constexpr DWORD MAX_RECV_RQ_SIZE_PER_SOCKET = 32;
 constexpr DWORD MAX_CLIENT_PER_RIO_THREAD = 2560;
 constexpr DWORD MAX_CQ_SIZE_PER_RIO_THREAD = ( MAX_SEND_RQ_SIZE_PER_SOCKET + MAX_RECV_RQ_SIZE_PER_SOCKET ) * MAX_CLIENT_PER_RIO_THREAD;
 
-static bool g_init_winsock = false;
-
-static void start_winsock() {
+bool io_service::initialize_winsock() {
     WSAData data{};
     int result = WSAStartup( MAKEWORD( 2, 2 ), &data );
     if ( result != 0 ) {
-        int *p = nullptr;
-        *p = 0;
+        return false;
     }
-    g_init_winsock = true;
+    return true;
 }
 
-static void cleanup_winsock() {
+void io_service::deinitialize_winsock() {
     WSACleanup();
-    g_init_winsock = false;
 }
 
 io_service::io_service() : context_pool{ RIORING_CONTEXT_POOL_SIZE }, address_pool{ RIORING_CONTEXT_POOL_SIZE } {
-    if ( !g_init_winsock ) {
-        start_winsock();
-    }
 }
 
 io_service::~io_service() noexcept {
@@ -51,10 +43,6 @@ io_service::~io_service() noexcept {
     context_pool.enum_all( &all_context );
     for ( auto ctx : all_context ) {
         unregister_buffer( ctx->addr_buffer_id );
-    }
-
-    if ( g_init_winsock ) {
-        cleanup_winsock();
     }
 }
 
@@ -66,15 +54,12 @@ bool io_service::load_rio() {
     SOCKET tmp = WSASocketW( AF_INET6, SOCK_STREAM, IPPROTO_TCP, nullptr, 0, WSA_FLAG_REGISTERED_IO );
     //SOCKET tmp = WSASocketW( AF_INET, SOCK_DGRAM, IPPROTO_UDP, nullptr, 0, WSA_FLAG_REGISTERED_IO );
     if ( tmp == INVALID_SOCKET ) {
-        auto er = WSAGetLastError();
         return false;
     }
 
     if ( WSAIoctl( tmp, SIO_GET_MULTIPLE_EXTENSION_FUNCTION_POINTER, &id, sizeof( id ),
                    &rio, sizeof( rio ), &size,
                    nullptr, nullptr ) == SOCKET_ERROR ) {
-        auto er = WSAGetLastError();
-
         closesocket( tmp );
         return false;
     }
