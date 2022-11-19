@@ -259,7 +259,7 @@ RIO_RQ io_service::create_request_queue( SOCKET s ) {
 
 namespace rioring {
 
-io_service::io_service() : context_pool{ RIORING_CONTEXT_POOL_SIZE }, cwa_pool{ RIORING_CONTEXT_POOL_SIZE } {}
+io_service::io_service() : context_pool{ RIORING_CONTEXT_POOL_SIZE } {}
 
 bool io_service::run( int concurrency ) {
     if ( concurrency < 1 ) return false;
@@ -287,10 +287,7 @@ void io_service::stop() {
     tg.wait_for_terminate();
 }
 
-io_context *io_service::allocate_context( context_type type ) {
-    if ( type == context_type::extra ) {
-        return cwa_pool.pop();
-    }
+io_context *io_service::allocate_context() {
     return context_pool.pop();
 }
 
@@ -299,20 +296,16 @@ void io_service::deallocate_context( io_context *ctx ) {
     ctx->iov.iov_base = nullptr;
     ctx->iov.iov_len = 0;
 
-    if ( auto extra = ctx->to_extra(); extra != nullptr ) {
-        cwa_pool.push( extra );
-    } else {
-        context_pool.push( ctx );
-    }
+    context_pool.push( ctx );
 }
 
 sockaddr *io_service::current_sockaddr( io_context *ctx ) {
     sockaddr *sa;
-    if ( ctx->to_extra() ) {
-        sa = (sockaddr*)&ctx->to_extra()->addr;
-    } else {
+    if ( ctx->ctype == io_context::context_type::tcp_context ) {
         auto socket = to_socket_ptr( ctx->handler );
         sa = socket->socket_address();
+    } else {
+        sa = (sockaddr*)&ctx->addr;
     }
 
     return sa;
@@ -340,19 +333,19 @@ bool io_service::submit( io_context *ctx ) {
         break;
     case io_context::io_type::read:
         if ( auto socket = to_socket_ptr( ctx->handler ); socket != nullptr ) {
-            if ( socket->protocol() == socket_object::type::tcp ) {
+            if ( ctx->ctype == io_context::context_type::tcp_context ) {
                 io_uring_prep_readv( sqe, socket->socket_handler, &ctx->iov, 1, 0 );
             } else {
-                io_uring_prep_recvmsg( sqe, socket->socket_handler, &ctx->to_extra()->msg, 0 );
+                io_uring_prep_recvmsg( sqe, socket->socket_handler, &ctx->msg, 0 );
             }
         }
         break;
     case io_context::io_type::write:
         if ( auto socket = to_socket_ptr( ctx->handler ); socket != nullptr ) {
-            if ( socket->protocol() == socket_object::type::tcp ) {
+            if ( ctx->ctype == io_context::context_type::tcp_context ) {
                 io_uring_prep_writev( sqe, socket->socket_handler, &ctx->iov, 1, 0 );
             } else {
-                io_uring_prep_sendmsg( sqe, socket->socket_handler, &ctx->to_extra()->msg, 0 );
+                io_uring_prep_sendmsg( sqe, socket->socket_handler, &ctx->msg, 0 );
             }
         }
         break;

@@ -17,14 +17,36 @@ udp_socket_ptr udp_socket::create( io_service *io ) {
     return udp_socket_ptr{ socket };
 }
 
-void udp_socket::create_socket() {
-    socket_handler = WSASocketW( AF_INET, SOCK_DGRAM, IPPROTO_UDP, nullptr, 0, WSA_FLAG_REGISTERED_IO );
+bool udp_socket::activate( family_type type ) {
+    int af = AF_INET;
+    if ( type == family_type::ipv6 ) {
+        af = AF_INET6;
+    }
+
+#ifdef WIN32
+    socket_handler = WSASocketW( af, SOCK_DGRAM, IPPROTO_UDP, nullptr, 0, WSA_FLAG_REGISTERED_IO );
+    if ( socket_handler == INVALID_SOCKET ) {
+        return false;
+    }
+#else
+    socket_handler = socket( af, SOCK_DGRAM, IPPROTO_UDP );
+    if ( socket_handler < 0 ) {
+        return false;
+    }
+#endif
     on_active();
+
+    return true;
 }
 
 void udp_socket::on_active() {
     recv_buffer.assign( RIORING_DATA_BUFFER_SIZE );
     send_buffer.assign( RIORING_DATA_BUFFER_SIZE );
+
+    constexpr linger lg{ 1, 0 };
+    constexpr int reuse = RIORING_REUSE_ADDR;
+    setsockopt( socket_handler, SOL_SOCKET, SO_LINGER, reinterpret_cast< const char* >( &lg ), sizeof( lg ) );
+    setsockopt( socket_handler, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast< const void* >( &reuse ), sizeof( int ) );
 
     socket_object::on_active();
     submit_receiving();
@@ -40,18 +62,18 @@ void udp_socket::submit_receiving() {
 
     ctx->handler = shared_from_this();
     ctx->type = io_context::io_type::read;
-#ifdef WIN32
     ctx->ctype = io_context::context_type::udp_context;
+#ifdef WIN32
     ctx->rq = request_queue;
     ctx->Offset = 0;
     ctx->BufferId = recv_buffer_id;
     ctx->Length = RIORING_DATA_BUFFER_SIZE;
 #else
-    extra->iov.iov_base = std::data( recv_bind_buffer );
-    extra->iov.iov_len = RIORING_DATA_BUFFER_SIZE;
+    ctx->iov.iov_base = std::data( recv_bind_buffer );
+    ctx->iov.iov_len = RIORING_DATA_BUFFER_SIZE;
 
-    extra->msg.msg_iov = &extra->iov;
-    extra->msg.msg_iovlen = 1;
+    ctx->msg.msg_iov = &ctx->iov;
+    ctx->msg.msg_iovlen = 1;
 #endif
 
     current_io->submit( ctx );
@@ -62,12 +84,12 @@ void udp_socket::submit_sending( sockaddr *addr ) {
 
     ctx->handler = shared_from_this();
     ctx->type = io_context::io_type::write;
+    ctx->ctype = io_context::context_type::udp_context;
 
 #ifdef WIN32
     auto size = std::min< size_t >( send_buffer.size(), RIORING_DATA_BUFFER_SIZE );
     std::memcpy( std::data( send_bind_buffer ), *send_buffer, size );
 
-    ctx->ctype = io_context::context_type::udp_context;
     ctx->rq = request_queue;
     ctx->Offset = 0;
     ctx->BufferId = send_buffer_id;
@@ -85,10 +107,10 @@ void udp_socket::submit_sending( sockaddr *addr ) {
 
     current_io->submit( ctx );
 #else
-    extra->iov.iov_base = const_cast< unsigned char* >( *send_buffer );
-    extra->iov.iov_len = send_buffer.size();
-    extra->msg.msg_iov = &extra->iov;
-    extra->msg.msg_iovlen = 1;
+    ctx->iov.iov_base = const_cast< unsigned char* >( *send_buffer );
+    ctx->iov.iov_len = send_buffer.size();
+    ctx->msg.msg_iov = &ctx->iov;
+    ctx->msg.msg_iovlen = 1;
 
     size_t addr_len = 0;
     switch ( addr->sa_family ) {
@@ -107,8 +129,6 @@ void udp_socket::submit_sending( sockaddr *addr ) {
         current_io->submit( ctx );
     }
 #endif
-
-
 }
 
 bool udp_socket::send_to( const void *bytes, size_t size, sockaddr *addr ) {

@@ -9,7 +9,6 @@
 
 #ifdef WIN32
 
-
 #include <mswsockdef.h>
 #include <ws2def.h>
 #include <ws2ipdef.h>
@@ -55,11 +54,6 @@ namespace rioring {
 
 class object_base;
 
-enum class context_type {
-    base,
-    extra
-};
-
 struct io_context {
     enum class io_type {
         unknown,
@@ -69,23 +63,21 @@ struct io_context {
         shutdown,
     };
 
-    io_context() = default;
-    virtual ~io_context() = default;
-    virtual struct io_extra_context *to_extra() { return nullptr; }
+    enum class context_type {
+        tcp_context,
+        udp_context
+    };
 
-    io_type         type{ io_type::unknown };
-    iovec           iov{};
-    std::shared_ptr< object_base >     handler;
-};
-
-struct io_extra_context : public io_context {
-    io_extra_context() {
+    io_context() {
         msg.msg_name = &addr;
         msg.msg_namelen = sizeof( sockaddr_storage );
     }
+    virtual ~io_context() = default;
 
-    ~io_extra_context() override = default;
-    io_extra_context *to_extra() override   { return this; }
+    io_type         type{ io_type::unknown };
+    context_type    ctype{ context_type::tcp_context };
+    iovec           iov{};
+    std::shared_ptr< object_base >     handler;
 
     msghdr              msg{};
     sockaddr_storage    addr{};

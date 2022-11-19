@@ -16,7 +16,9 @@
 #include "thread_lock.h"
 #include "io_buffer.h"
 #include "io_double_buffer.h"
+#ifdef WIN32
 #include <mswsockdef.h>
+#endif
 
 namespace rioring {
 

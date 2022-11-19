@@ -89,7 +89,7 @@ public:
 
     [[nodiscard]] int running_count() const     { return running_io; }
 
-    io_context *allocate_context( context_type type );
+    io_context *allocate_context();
 
 protected:
     void on_thread() override;
@@ -97,13 +97,12 @@ protected:
 private:
     void io( io_uring *ring );
     void deallocate_context( io_context *ctx );
-    sockaddr *current_sockaddr( io_context *ctx );
+    static sockaddr *current_sockaddr( io_context *ctx );
 
 private:
     spin_lock                   lock;
     std::vector< io_uring* >    io_array;
     simple_pool< io_context >   context_pool;
-    simple_pool< io_extra_context > cwa_pool;
     std::atomic_int             running_io{ 0 };
 
     thread_generator            tg;

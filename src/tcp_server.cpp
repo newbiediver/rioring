@@ -146,7 +146,7 @@ bool tcp_server::run( unsigned short port ) {
 }
 
 void tcp_server::stop() {
-    auto ctx = current_io->allocate_context( context_type::base );
+    auto ctx = current_io->allocate_context();
     ctx->handler = shared_from_this();
     ctx->type = io_context::io_type::shutdown;
 
@@ -154,7 +154,7 @@ void tcp_server::stop() {
 }
 
 void tcp_server::submit_accept() {
-    auto ctx = current_io->allocate_context( context_type::base );
+    auto ctx = current_io->allocate_context();
     ctx->handler = shared_from_this();
     ctx->type = io_context::io_type::accept;
 

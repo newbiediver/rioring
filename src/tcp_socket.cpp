@@ -306,7 +306,7 @@ void tcp_socket::set_remote_info( struct ::sockaddr *addr ) {
 }
 
 void tcp_socket::submit_receiving() {
-    auto ctx = current_io->allocate_context( context_type::base );
+    auto ctx = current_io->allocate_context();
     ctx->handler = shared_from_this();
     ctx->type = io_context::io_type::read;
     ctx->iov.iov_base = std::data( recv_bind_buffer );
@@ -316,7 +316,7 @@ void tcp_socket::submit_receiving() {
 }
 
 void tcp_socket::submit_sending( sockaddr *addr [[maybe_unused]] ) {
-    auto ctx = current_io->allocate_context( context_type::base );
+    auto ctx = current_io->allocate_context();
     ctx->handler = shared_from_this();
     ctx->type = io_context::io_type::write;
     ctx->iov.iov_base = const_cast< unsigned char* >( *send_buffer );

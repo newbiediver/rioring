@@ -153,7 +153,7 @@ void socket_object::on_active() {
 
 void socket_object::submit_shutdown() {
 #ifdef __linux__
-    auto ctx = current_io->allocate_context( context_type::base );
+    auto ctx = current_io->allocate_context();
     ctx->handler = shared_from_this();
     ctx->type = io_context::io_type::shutdown;
 

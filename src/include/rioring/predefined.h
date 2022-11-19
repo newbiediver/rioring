@@ -6,7 +6,7 @@
 #define RIORING_RIORING_PREDEFINED_H
 
 // Project version. SEMVER.
-#define RIORING_VERSION "0.1.1"
+#define RIORING_VERSION "0.2.0"
 
 
 // Environments
