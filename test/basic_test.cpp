@@ -6,19 +6,11 @@
 #include <future>
 #include <condition_variable>
 #include <gtest/gtest.h>
-#ifdef WIN32
-#include <Ws2tcpip.h>
-#else
-#include <arpa/inet.h>
-#endif
 #include "rioring.h"
 #include "rioring/udp_server.h"
+#include "rioring/address_resolver.h"
 
 using namespace std::chrono_literals;
-
-rioring::io_service io;
-rioring::tcp_server_ptr tcp_server;
-rioring::udp_server_ptr udp_server;
 
 void on_read( rioring::socket_ptr &socket, rioring::io_buffer *buffer, sockaddr *addr [[maybe_unused]] ) {
     std::array< unsigned char, 20 > buf{ 0 };
@@ -42,19 +34,6 @@ void on_udp_server_read( rioring::socket_ptr &socket, rioring::io_buffer *buffer
     }
 }
 
-TEST(BasicTest, ServerStarting) {
-    ASSERT_TRUE( io.run(2) );
-
-    tcp_server = rioring::tcp_server::create( &io );
-    tcp_server->set_accept_event( on_accept );
-    ASSERT_NE( tcp_server, nullptr );
-    ASSERT_TRUE( tcp_server->run( 8000 ) );
-
-    udp_server = rioring::udp_server::create( &io );
-    udp_server->set_receive_event( on_udp_server_read );
-    ASSERT_NE( udp_server, nullptr );
-    ASSERT_TRUE( udp_server->run( 8100 ) );
-}
 
 std::promise< std::string > tcp_feedback, udp_feedback;
 std::mutex lock;
@@ -80,19 +59,34 @@ void on_client_close( rioring::socket_ptr &socket ) {
     socket_closed.notify_all();
 }
 
-TEST(BasicTest, TCPEchoTesting) {
-    std::unique_lock< std::mutex > ul{ lock };
-    rioring::io_service client_io;
+#ifdef WIN32
+TEST(BasicTest, InitWinsock) {
+    ASSERT_TRUE( rioring::io_service::initialize_winsock() );
+}
+#endif
+
+TEST(BasicTest, TcpTesting) {
     const char *testing_word = "Hello World";
 
+    rioring::io_service server_io;
+    ASSERT_TRUE( server_io.run( 2 ) );
+
+    auto tcp_server = rioring::tcp_server::create( &server_io );
+    tcp_server->set_accept_event( on_accept );
+    ASSERT_NE( tcp_server, nullptr );
+    ASSERT_TRUE( tcp_server->run( 32800 ) );
+
+    rioring::io_service client_io;
     ASSERT_TRUE( client_io.run( 2 ) );
+
+    std::this_thread::sleep_for( 500ms );
 
     rioring::tcp_socket_ptr tcp_socket = rioring::tcp_socket::create( &client_io );
     ASSERT_NE( tcp_socket, nullptr );
 
     tcp_socket->set_close_event( on_client_close );
     tcp_socket->set_receive_event( on_tcp_client_read );
-    ASSERT_TRUE( tcp_socket->connect( "localhost", 8000 ) );
+    ASSERT_TRUE( tcp_socket->connect( "localhost", 32800 ) );
 
     auto prom_tcp = tcp_feedback.get_future();
     EXPECT_TRUE( tcp_socket->send( testing_word, strlen( testing_word ) ) );
@@ -101,18 +95,34 @@ TEST(BasicTest, TCPEchoTesting) {
     EXPECT_STREQ( prom_tcp.get().c_str(), testing_word );
 
     tcp_socket->close();
+    std::unique_lock< std::mutex > ul{ lock };
     socket_closed.wait_for( ul, 2s );
     EXPECT_FALSE( tcp_socket->connected() );
 
     client_io.stop();
     EXPECT_EQ( client_io.running_count(), 0 );
+
+    tcp_server->stop();
+    server_io.stop();
+
+    EXPECT_EQ( server_io.running_count(), 0 );
 }
 
-TEST(BasicTest, UDPEchoTesting) {
-    rioring::io_service client_io;
+TEST(BasicTest, UDPTesting) {
     const char *testing_word = "Hello World";
 
+    rioring::io_service server_io;
+    ASSERT_TRUE( server_io.run(2 ) );
+
+    auto udp_server = rioring::udp_server::create( &server_io );
+    udp_server->set_receive_event( on_udp_server_read );
+    ASSERT_NE( udp_server, nullptr );
+    ASSERT_TRUE( udp_server->run( 38100 ) );
+
+    rioring::io_service client_io;
     ASSERT_TRUE( client_io.run( 2 ) );
+
+    std::this_thread::sleep_for( 500ms );
 
     rioring::udp_socket_ptr udp_socket = rioring::udp_socket::create( &client_io );
     ASSERT_NE( udp_socket, nullptr );
@@ -122,13 +132,7 @@ TEST(BasicTest, UDPEchoTesting) {
     ASSERT_TRUE( udp_socket->activate( rioring::udp_socket::family_type::ipv4 ) );
 
     sockaddr_in server_addr{};
-    server_addr.sin_family = AF_INET;
-    server_addr.sin_port = htons( 8100 );
-#ifdef WIN32
-    InetPton( AF_INET, "127.0.0.1", &server_addr.sin_addr.s_addr );
-#else
-    server_addr.sin_addr.s_addr = inet_addr( "127.0.0.1" );
-#endif
+    rioring::convert_socket_address( "localhost", 38100, &server_addr );
 
     auto prom_udp = udp_feedback.get_future();
 
@@ -140,12 +144,15 @@ TEST(BasicTest, UDPEchoTesting) {
 
     client_io.stop();
     EXPECT_EQ( client_io.running_count(), 0 );
-}
 
-TEST(BasicTest, ServerStopping) {
-    tcp_server->stop();
     udp_server->stop();
-    io.stop();
+    server_io.stop();
 
-    EXPECT_EQ( io.running_count(), 0 );
+    EXPECT_EQ( server_io.running_count(), 0 );
 }
+
+#ifdef WIN32
+TEST(BasicTest, DeinitWinsock) {
+    rioring::io_service::deinitialize_winsock();
+}
+#endif

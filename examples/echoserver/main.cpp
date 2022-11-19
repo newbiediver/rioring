@@ -71,6 +71,10 @@ int main() {
     event_receiver receiver;
     std::string in;
 
+#ifdef WIN32
+    io_service::initialize_winsock();
+#endif
+
     // Initialize i/o service.
     io_service io;
     if ( !io.run( static_cast< int >( std::thread::hardware_concurrency() ) ) ) {
@@ -111,6 +115,10 @@ int main() {
 
     server->stop();
     io.stop();
+
+#ifdef WIN32
+    io_service::deinitialize_winsock();
+#endif
 
     return 0;
 }

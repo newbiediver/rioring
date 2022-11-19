@@ -26,6 +26,9 @@ BOOL WINAPI extra_signal_for_win32( unsigned long type ) {
 
 
 int main() {
+#ifdef WIN32
+    io_service::initialize_winsock();
+#endif
     io_service io;
 
     if ( !io.run( 4 ) ) {
@@ -67,6 +70,10 @@ int main() {
 
     server->stop();
     io.stop();
+
+#ifdef WIN32
+    io_service::deinitialize_winsock();
+#endif
 
     return 0;
 }

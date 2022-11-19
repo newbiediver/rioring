@@ -28,10 +28,43 @@ bool udp_socket::activate( family_type type ) {
     if ( socket_handler == INVALID_SOCKET ) {
         return false;
     }
+
+    if ( af == AF_INET ) {
+        sockaddr_in addr{};
+        addr.sin_family = AF_INET;
+
+        if ( bind( socket_handler, (sockaddr*)&addr, sizeof( addr ) ) == SOCKET_ERROR ) {
+            return false;
+        }
+    } else {
+        sockaddr_in6 addr{};
+        addr.sin6_family = AF_INET;
+
+        if ( bind( socket_handler, (sockaddr*)&addr, sizeof( addr ) ) == SOCKET_ERROR ) {
+            return false;
+        }
+    }
+
 #else
     socket_handler = socket( af, SOCK_DGRAM, IPPROTO_UDP );
     if ( socket_handler < 0 ) {
         return false;
+    }
+
+    if ( af == AF_INET ) {
+        sockaddr_in addr{};
+        addr.sin_family = AF_INET;
+
+        if ( bind( socket_handler, (sockaddr*)&addr, sizeof( addr ) ) < 0 ) {
+            return false;
+        }
+    } else {
+        sockaddr_in6 addr{};
+        addr.sin6_family = AF_INET;
+
+        if ( bind( socket_handler, (sockaddr*)&addr, sizeof( addr ) ) < 0 ) {
+            return false;
+        }
     }
 #endif
     on_active();
@@ -43,10 +76,10 @@ void udp_socket::on_active() {
     recv_buffer.assign( RIORING_DATA_BUFFER_SIZE );
     send_buffer.assign( RIORING_DATA_BUFFER_SIZE );
 
-    constexpr linger lg{ 1, 0 };
+    /*constexpr linger lg{ 1, 0 };
     constexpr int reuse = RIORING_REUSE_ADDR;
     setsockopt( socket_handler, SOL_SOCKET, SO_LINGER, reinterpret_cast< const char* >( &lg ), sizeof( lg ) );
-    setsockopt( socket_handler, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast< const char* >( &reuse ), sizeof( int ) );
+    setsockopt( socket_handler, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast< const char* >( &reuse ), sizeof( int ) );*/
 
     socket_object::on_active();
     submit_receiving();
@@ -95,13 +128,14 @@ void udp_socket::submit_sending( sockaddr *addr ) {
     ctx->BufferId = send_buffer_id;
     ctx->Length = static_cast< ULONG >( size );
 
+    ctx->addr.si_family = addr->sa_family;
     switch ( addr->sa_family ) {
     case AF_INET6:
-        std::memcpy( &ctx->addr.Ipv6, addr, sizeof( SOCKADDR_IN6 ) );
+        std::memcpy( &ctx->addr.Ipv6, addr, sizeof( sockaddr_in6 ) );
         break;
     case AF_INET:
     default:
-        std::memcpy( &ctx->addr.Ipv4, addr, sizeof( SOCKADDR_IN ) );
+        std::memcpy( &ctx->addr.Ipv4, addr, sizeof( sockaddr_in ) );
         break;
     }
 

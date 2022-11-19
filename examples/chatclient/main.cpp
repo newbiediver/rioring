@@ -32,6 +32,9 @@ void on_close( socket_ptr &obj ) {
 }
 
 int main() {
+#ifdef WIN32
+    io_service::initialize_winsock();
+#endif
     io_service io;
     if ( !io.run( 2 ) ) {
         std::cerr << "Error to run io service" << std::endl;
@@ -75,6 +78,10 @@ int main() {
     }
 
     io.stop();
+
+#ifdef WIN32
+    io_service::deinitialize_winsock();
+#endif
 
     return 0;
 }
