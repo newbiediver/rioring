@@ -20,8 +20,10 @@ public:
             event->on_disconnect_client( std::forward< decltype( socket ) >( socket ) );
         } );
 
-        new_socket->set_receive_event( []( auto && socket, auto && buffer ) {
-            event_receiver::on_read_message( std::forward< decltype( socket ) >( socket ), std::forward< decltype( buffer ) >( buffer ) );
+        new_socket->set_receive_event( []( auto &&socket, auto &&buffer, auto &&addr ) {
+            event_receiver::on_read_message( std::forward< decltype( socket ) >( socket ),
+                    std::forward< decltype( buffer ) >( buffer ),
+                    std::forward< decltype( addr ) >( addr ) );
         } );
 
         std::cout << "Connected client " << new_socket->remote_ipv4() << ":" << new_socket->remote_port() << std::endl;
@@ -30,7 +32,7 @@ public:
         activating_sockets.insert( new_socket );
     }
 
-    static void on_read_message( socket_ptr &socket, io_buffer *buffer ) {
+    static void on_read_message( socket_ptr &socket, io_buffer *buffer, sockaddr *addr [[maybe_unused]] ) {
         // just echo
         auto tcp = to_tcp_socket_ptr( socket );
         tcp->send( *(*buffer), buffer->size() );

@@ -9,7 +9,10 @@
 
 #ifdef WIN32
 
+
 #include <mswsockdef.h>
+#include <ws2def.h>
+#include <ws2ipdef.h>
 
 namespace rioring {
 
@@ -17,13 +20,28 @@ class object_base;
 
 struct io_context : public RIO_BUF {
     enum class io_type {
+        unknown,
         read,
         write,
     };
 
-    io_type         type;
-    RIO_RQ          rq;
+    enum class context_type {
+        tcp_context,
+        udp_context
+    };
+
+    io_context() : RIO_BUF{} {}
+    virtual ~io_context() = default;
+
+    io_type         type{ io_type::unknown };
+    RIO_RQ          rq{};
     std::shared_ptr< object_base >     handler;
+
+    context_type    ctype{ context_type::tcp_context };
+    SOCKADDR_INET   addr{};
+    RIO_BUFFERID    addr_buffer_id{};
+    RIO_BUF *       binded_address_context{};
+
 };
 
 }

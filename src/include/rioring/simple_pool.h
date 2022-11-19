@@ -6,6 +6,7 @@
 #define RIORING_SIMPLE_POOL_H
 
 #include <list>
+#include <iterator>
 #include "thread_lock.h"
 
 namespace rioring {
@@ -46,6 +47,13 @@ public:
     void push( Obj *ctx ) {
         std::scoped_lock sc{ lock };
         pool.push_back( ctx );
+    }
+
+    void enum_all( std::vector< Obj* > *all ) {
+        std::scoped_lock sc{ lock };
+        all->reserve( pool.size() );
+
+        std::copy( pool.begin(), pool.end(), std::back_inserter( *all ) );
     }
 
 private:

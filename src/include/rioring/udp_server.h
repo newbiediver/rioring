@@ -16,6 +16,10 @@ inline udp_server_ptr to_udp_server_ptr( socket_ptr &socket ) {
     return std::dynamic_pointer_cast< udp_server, socket_object >( socket );
 }
 
+inline udp_server_ptr to_udp_server_ptr( object_ptr &obj ) {
+    return std::dynamic_pointer_cast< udp_server, object_base >( obj );
+}
+
 class udp_server : public udp_socket {
 public:
     udp_server() = delete;

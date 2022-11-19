@@ -12,11 +12,11 @@
 
 namespace rioring {
 
-tcp_socket::tcp_socket( rioring::io_service *io ) : socket_object{ io } {
+tcp_socket::tcp_socket( rioring::io_service *io ) : socket_object{ io, socket_object::type::tcp } {
 
 }
 
-tcp_socket::tcp_socket( rioring::io_service *io, SOCKET sock ) : socket_object{ io, sock } {
+tcp_socket::tcp_socket( rioring::io_service *io, SOCKET sock ) : socket_object{ io, socket_object::type::tcp, sock } {
 
 }
 
@@ -31,7 +31,7 @@ tcp_socket_ptr tcp_socket::create( io_service *io, SOCKET sock ) {
 }
 
 bool tcp_socket::connect( std::string_view address, unsigned short port ) {
-    auto addr_info = resolve( resolve_type::tcp, address, port );
+    auto addr_info = resolve( address, port );
     if ( !addr_info ) return false;
 
     for ( auto a = addr_info; a != nullptr; a = a->ai_next ) {
@@ -59,21 +59,6 @@ bool tcp_socket::connect( std::string_view address, unsigned short port ) {
     return true;
 }
 
-void tcp_socket::close( tcp_socket::close_type type ) {
-    if ( type == close_type::graceful ) {
-        std::scoped_lock sc{ lock };
-        if ( send_buffer.empty() ) {
-            closesocket( socket_handler );
-            socket_handler = INVALID_SOCKET;
-        } else {
-            shutdown_gracefully = true;
-        }
-    } else {
-        closesocket( socket_handler );
-        socket_handler = INVALID_SOCKET;
-    }
-}
-
 bool tcp_socket::send( const void *bytes, size_t size ) {
     if ( shutdown_gracefully ) return false;
     if ( !connected() ) return false;
@@ -82,7 +67,7 @@ bool tcp_socket::send( const void *bytes, size_t size ) {
     std::scoped_lock sc{ lock };
     if ( send_buffer.empty() ) {
         send_buffer.push( static_cast< const unsigned char* >( bytes ), size );
-        submit_sending();
+        submit_sending( nullptr );
     } else {
         send_buffer.push( static_cast< const unsigned char* >( bytes ), size );
     }
@@ -119,13 +104,6 @@ void tcp_socket::on_shutdown() {
     connected_flag = false;
 }
 
-void tcp_socket::on_send_complete() {
-    if ( shutdown_gracefully ) {
-        closesocket( socket_handler );
-        socket_handler = INVALID_SOCKET;
-    }
-}
-
 void tcp_socket::submit_receiving() {
     auto ctx = current_io->allocate_context();
     ctx->handler = shared_from_this();
@@ -135,10 +113,23 @@ void tcp_socket::submit_receiving() {
     ctx->BufferId = recv_buffer_id;
     ctx->Length = RIORING_DATA_BUFFER_SIZE;
 
+    auto addr = socket_address();
+    ctx->addr.si_family = addr->sa_family;
+
+    switch ( addr->sa_family ) {
+    case AF_INET6:
+        std::memcpy( &ctx->addr.Ipv6, addr, sizeof( SOCKADDR_IN6 ) );
+        break;
+    case AF_INET:
+    default:
+        std::memcpy( &ctx->addr.Ipv4, addr, sizeof( SOCKADDR_IN ) );
+        break;
+    }
+
     current_io->submit( ctx );
 }
 
-void tcp_socket::submit_sending() {
+void tcp_socket::submit_sending( sockaddr *addr ) {
     auto size = std::min< size_t >( send_buffer.size(), RIORING_DATA_BUFFER_SIZE );
     std::memcpy( std::data( send_bind_buffer ), *send_buffer, size );
 
@@ -150,6 +141,23 @@ void tcp_socket::submit_sending() {
     ctx->BufferId = send_buffer_id;
     ctx->Length = static_cast< ULONG >( size );
 
+    sockaddr *socket_addr = addr;
+    if ( !socket_addr ) {
+        socket_addr = socket_address();
+    }
+
+    ctx->addr.si_family = socket_addr->sa_family;
+
+    switch ( socket_addr->sa_family ) {
+    case AF_INET6:
+        std::memcpy( &ctx->addr.Ipv6, socket_addr, sizeof( SOCKADDR_IN6 ) );
+        break;
+    case AF_INET:
+    default:
+        std::memcpy( &ctx->addr.Ipv4, socket_addr, sizeof( SOCKADDR_IN ) );
+        break;
+    }
+
     current_io->submit( ctx );
 }
 
@@ -158,6 +166,7 @@ void tcp_socket::set_remote_info( struct ::sockaddr *addr ) {
         auto in = reinterpret_cast< ::sockaddr_in* >( addr );
         remote_port_number = ntohs( in->sin_port );
         inet_ntop( AF_INET, &in->sin_addr, std::data( remote_v4_addr_string ), std::size( remote_v4_addr_string ) );
+        std::memcpy( &addr_storage.Ipv4, in, sizeof( *in ) );
     } else {
         auto in = reinterpret_cast< ::sockaddr_in6* >( addr );
         remote_port_number = ntohs( in->sin6_port );
@@ -166,8 +175,10 @@ void tcp_socket::set_remote_info( struct ::sockaddr *addr ) {
         const auto bytes = in->sin6_addr.s6_addr;
         const auto v4 = reinterpret_cast< const ::in_addr* >( bytes + 12 );
         inet_ntop( AF_INET, v4, std::data( remote_v4_addr_string ), std::size( remote_v4_addr_string ) );
+        std::memcpy( &addr_storage.Ipv6, in, sizeof( *in ) );
     }
 
+    addr_storage.si_family = addr->sa_family;
 }
 
 }

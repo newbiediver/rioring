@@ -14,9 +14,9 @@
 #include "predefined.h"
 #include "object_base.h"
 #include "thread_lock.h"
-#include "io_context.h"
 #include "io_buffer.h"
 #include "io_double_buffer.h"
+#include <mswsockdef.h>
 
 namespace rioring {
 
@@ -106,9 +106,11 @@ protected:
     SOCKET          socket_handler{ INVALID_SOCKET };
     RIO_RQ          request_queue{ nullptr };
     RIO_BUFFERID    recv_buffer_id{ nullptr }, send_buffer_id{ nullptr };
+    SOCKADDR_INET   addr_storage{};
     std::array< unsigned char, RIORING_DATA_BUFFER_SIZE > recv_bind_buffer{ 0 }, send_bind_buffer{ 0 };
 #else
-    int             socket_handler{ 0 };
+    int                     socket_handler{ 0 };
+    sockaddr_storage        addr_storage{};
     std::array< unsigned char, RIORING_DATA_BUFFER_SIZE > recv_bind_buffer{ 0 };
 #endif
 
@@ -125,8 +127,6 @@ protected:
     critical_section        lock;
     io_buffer               recv_buffer;
     io_double_buffer        send_buffer;
-
-    sockaddr_storage        addr_storage{};
 
     receive_event   recv_event;
     send_event      send_complete_event;

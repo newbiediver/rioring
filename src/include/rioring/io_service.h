@@ -9,18 +9,16 @@
 #include "rioring/thread_object.h"
 #include "rioring/thread_lock.h"
 #include "rioring/simple_pool.h"
-#include "rioring/io_context.h"
 
 #ifdef WIN32
 
 #include <WinSock2.h>
 #include <MSWSock.h>
+#include "rioring/io_context.h"
 
 #pragma comment(lib, "ws2_32")
 
 namespace rioring {
-
-struct io_context;
 
 class io_service : private thread_object {
 public:
@@ -28,7 +26,7 @@ public:
     ~io_service() noexcept override;
 
     bool run( int concurrency );
-    bool submit( io_context *ctx ) const;
+    bool submit( io_context *ctx );
     void stop();
 
     [[nodiscard]] int running_count() const     { return running_io; }
@@ -39,9 +37,12 @@ protected:
     void on_thread() override;
 
 private:
+    bool load_rio();
     void io( RIO_CQ cq );
     void deallocate_context( io_context *ctx );
-    bool load_rio();
+    RIO_BUF *allocate_address_context( io_context *ctx );
+    void deallocate_address_context( RIO_BUF *buf );
+    static sockaddr *current_sockaddr( io_context *ctx );
 
     RIO_BUFFERID register_buffer( void * buffer, size_t size ) const;
     void unregister_buffer( RIO_BUFFERID id ) const;
@@ -53,6 +54,7 @@ private:
     spin_lock                   lock;
     std::vector< RIO_CQ >       io_array;
     simple_pool< io_context >   context_pool;
+    simple_pool< RIO_BUF >      address_pool;
     std::atomic_int             running_io{ 0 };
     RIO_EXTENSION_FUNCTION_TABLE rio{};
 
@@ -66,6 +68,7 @@ private:
 // liburing-dev 설치
 // You have to install 'liburing-dev' using your package manager (like apt, yum)
 #include <liburing.h>
+#include "rioring/io_context.h"
 
 namespace rioring {
 

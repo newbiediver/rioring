@@ -35,6 +35,7 @@ public:
     bool send_to( const void *bytes, size_t size, sockaddr *addr );
 
 protected:
+    void create_socket();
     void submit_receiving() override;
     void submit_sending( sockaddr *addr ) override;
 

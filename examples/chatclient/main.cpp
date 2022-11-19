@@ -7,7 +7,7 @@
 using namespace rioring;
 using namespace std::chrono_literals;
 
-void on_receive( socket_ptr &socket, io_buffer *buffer ) {
+void on_receive( socket_ptr &socket, io_buffer *buffer, sockaddr *addr [[maybe_unused]] ) {
     std::array< unsigned char, 1024 > buf{ 0 };
     auto sc = reinterpret_cast< scheme* >( &buf[0] );
 

@@ -21,40 +21,70 @@ udp_server_ptr udp_server::create( io_service *io ) {
 
 bool udp_server::run( unsigned short port ) {
     auto error_occur = [&] {
-        io_error( std::make_error_code( std::errc( errno ) ) );
+        io_error( std::make_error_code( std::errc( WSAGetLastError() ) ) );
     };
 
+#ifdef WIN32
+    socket_handler = WSASocketW( AF_INET, SOCK_DGRAM, IPPROTO_UDP, nullptr, 0, WSA_FLAG_REGISTERED_IO );
+    if ( socket_handler == INVALID_SOCKET ) {
+        error_occur();
+        return false;
+    }
+#else
     socket_handler = socket( AF_INET6, SOCK_DGRAM, IPPROTO_UDP );
     if ( socket_handler == -1 ) {
         error_occur();
         return false;
     }
+#endif
 
+
+    /*sockaddr_in6 in{};
+    in.sin6_family = AF_INET6;
+    in.sin6_port = htons( port );
+    in.sin6_addr = in6addr_any;*/
+
+    sockaddr_in in{};
+    in.sin_family = AF_INET;
+    in.sin_port = htons( port );
+    in.sin_addr = in4addr_any;
+
+#ifdef WIN32
+    constexpr char reuse = RIORING_REUSE_ADDR, v6only = RIORING_ONLY_IPV6;
+    setsockopt( socket_handler, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof( char ) );
+    //setsockopt( socket_handler, IPPROTO_IPV6, IPV6_V6ONLY, &v6only, sizeof( char ) );
+
+    if ( bind( socket_handler, reinterpret_cast< ::sockaddr* >( &in ), sizeof( in ) ) == SOCKET_ERROR ) {
+        error_occur();
+        return false;
+    }
+#else
     constexpr int reuse = RIORING_REUSE_ADDR, v6only = RIORING_ONLY_IPV6;
     setsockopt( socket_handler, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof( int ) );
     setsockopt( socket_handler, IPPROTO_IPV6, IPV6_V6ONLY, &v6only, sizeof( int ) );
-
-    sockaddr_in6 in{};
-    in.sin6_family = AF_INET6;
-    in.sin6_port = htons( port );
-    in.sin6_addr = in6addr_any;
 
     if ( bind( socket_handler, reinterpret_cast< ::sockaddr* >( &in ), sizeof( in ) ) < 0 ) {
         error_occur();
         return false;
     }
+#endif
 
     on_active();
-    submit_receiving();
 
     return true;
 }
 
 void udp_server::stop() {
     close();
+#ifdef WIN32
+    while ( socket_handler != INVALID_SOCKET ) {
+        std::this_thread::sleep_for( 1ms );
+    }
+#else
     while ( socket_handler != 0 ) {
         std::this_thread::sleep_for( 1ms );
     }
+#endif
 }
 
 }

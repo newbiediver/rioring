@@ -40,13 +40,19 @@ static void cleanup_winsock() {
     g_init_winsock = false;
 }
 
-io_service::io_service() : context_pool{ RIORING_CONTEXT_POOL_SIZE } {
+io_service::io_service() : context_pool{ RIORING_CONTEXT_POOL_SIZE }, address_pool{ RIORING_CONTEXT_POOL_SIZE } {
     if ( !g_init_winsock ) {
         start_winsock();
     }
 }
 
 io_service::~io_service() noexcept {
+    std::vector< io_context * > all_context;
+    context_pool.enum_all( &all_context );
+    for ( auto ctx : all_context ) {
+        unregister_buffer( ctx->addr_buffer_id );
+    }
+
     if ( g_init_winsock ) {
         cleanup_winsock();
     }
@@ -57,7 +63,8 @@ bool io_service::load_rio() {
     GUID id = WSAID_MULTIPLE_RIO;
     unsigned long size = 0;
 
-    SOCKET tmp = WSASocketW( AF_INET, SOCK_STREAM, IPPROTO_TCP, nullptr, 0, WSA_FLAG_REGISTERED_IO );
+    SOCKET tmp = WSASocketW( AF_INET6, SOCK_STREAM, IPPROTO_TCP, nullptr, 0, WSA_FLAG_REGISTERED_IO );
+    //SOCKET tmp = WSASocketW( AF_INET, SOCK_DGRAM, IPPROTO_UDP, nullptr, 0, WSA_FLAG_REGISTERED_IO );
     if ( tmp == INVALID_SOCKET ) {
         auto er = WSAGetLastError();
         return false;
@@ -65,7 +72,9 @@ bool io_service::load_rio() {
 
     if ( WSAIoctl( tmp, SIO_GET_MULTIPLE_EXTENSION_FUNCTION_POINTER, &id, sizeof( id ),
                    &rio, sizeof( rio ), &size,
-                   nullptr, nullptr ) ) {
+                   nullptr, nullptr ) == SOCKET_ERROR ) {
+        auto er = WSAGetLastError();
+
         closesocket( tmp );
         return false;
     }
@@ -105,13 +114,43 @@ void io_service::deallocate_context( io_context *ctx ) {
     context_pool.push( ctx );
 }
 
-bool io_service::submit( io_context *ctx ) const {
-    if ( ctx->type == io_context::io_type::read ) {
-        rio.RIOReceive( ctx->rq, ctx, 1, 0, ctx );
-    } else {
-        rio.RIOSend( ctx->rq, ctx, 1, 0, ctx );
-    }
+RIO_BUF* io_service::allocate_address_context( io_context *ctx ) {
+    auto socket = to_socket_ptr( ctx->handler );
+    auto address_buf = address_pool.pop();
 
+    if ( !ctx->addr_buffer_id ) {
+        ctx->addr_buffer_id = register_buffer( &ctx->addr, sizeof( SOCKADDR_INET ) );
+    }
+    address_buf->BufferId = ctx->addr_buffer_id;
+    address_buf->Offset = 0;
+    address_buf->Length = sizeof( SOCKADDR_INET );
+
+    ctx->binded_address_context = address_buf;
+
+    return address_buf;
+}
+
+void io_service::deallocate_address_context( RIO_BUF *buf ) {
+    buf->Length = 0;
+    buf->BufferId = nullptr;
+
+    address_pool.push( buf );
+}
+
+bool io_service::submit( io_context *ctx ) {
+    if ( ctx->type == io_context::io_type::read ) {
+        if ( ctx->ctype == io_context::context_type::tcp_context ) {
+            rio.RIOReceive( ctx->rq, ctx, 1, 0, ctx );
+        } else {
+            rio.RIOReceiveEx( ctx->rq, ctx, 1, nullptr, allocate_address_context( ctx ), nullptr, nullptr, 0, ctx );
+        }
+    } else {
+        if ( ctx->ctype == io_context::context_type::tcp_context ) {
+            rio.RIOSend( ctx->rq, ctx, 1, 0, ctx );
+        } else {
+            rio.RIOSendEx( ctx->rq, ctx, 1, nullptr, allocate_address_context( ctx ), nullptr, nullptr, 0, ctx );
+        }
+    }
     return true;
 }
 
@@ -161,17 +200,32 @@ void io_service::io( RIO_CQ cq ) {
                 if ( bytes_transferred == 0 ) {
                     connector->io_shutdown();
                 } else {
-                    connector->io_received( bytes_transferred );
+                    connector->io_received( bytes_transferred, current_sockaddr( context ) );
                 }
                 break;
             case io_context::io_type::write:
-                connector->io_sent( bytes_transferred );
+                connector->io_sent( bytes_transferred, current_sockaddr( context ) );
                 break;
+            default:
+                break;
+            }
+
+            if ( context->binded_address_context ) {
+                deallocate_address_context( context->binded_address_context );
+                context->binded_address_context = nullptr;
             }
 
             deallocate_context( context );
         }
     }
+}
+
+sockaddr *io_service::current_sockaddr( io_context *ctx ) {
+    if ( ctx->addr.si_family == AF_INET6 ) {
+        return (sockaddr*)&ctx->addr.Ipv6;
+    }
+
+    return (sockaddr*)&ctx->addr.Ipv4;
 }
 
 RIO_BUFFERID io_service::register_buffer( void *buffer, size_t size ) const {
