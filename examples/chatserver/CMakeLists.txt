@@ -11,6 +11,8 @@ endif()
 project(chatserver)
 set(CMAKE_CXX_STANDARD 17)
 
+include_directories(${RIORING}/include)
+
 if (WIN32)
     add_compile_options("$<$<C_COMPILER_ID:MSVC>:/utf-8>")
     add_compile_options("$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")
@@ -18,7 +20,6 @@ if (WIN32)
     set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /DNDEBUG /O2 /Oi /Oy /GL")
     add_definitions(/DWIN32_LEAN_AND_MEAN /DNOMINMAX /D_AMD64_ /D_LIB /D_WIN32_WINNT=0x0A00)
     add_compile_options(/MP)
-    include_directories(${RIORING}/include)
 else()
     add_compile_options(-g -fthreadsafe-statics -fno-omit-frame-pointer -Wno-format-security)
     set(CMAKE_CXX_FLAGS_DEBUG "-O0 -D_DEBUG")
@@ -31,9 +32,9 @@ add_executable(chatserver
         pool.cpp
         receiver.cpp)
 
+target_link_directories(chatserver PRIVATE ${RIORING}/lib)
 if (WIN32)
     target_link_options(chatserver PRIVATE /LTCG)
-    target_link_directories(chatserver PRIVATE ${RIORING}/lib)
     if (${CMAKE_BUILD_TYPE} STREQUAL "Debug")
         target_link_libraries(chatserver PRIVATE rioringd)
     else()
