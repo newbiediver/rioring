@@ -247,7 +247,7 @@ int main() {
 2. **Linux - [axboe/liburing](https://github.com/axboe/liburing)**
 
 ## Next Step
-1. **Implement UDP socket** - updated
+1. ~~Implement UDP socket~~ - updated
 2. **Support docker image** - developing
 3. **Support package manager** - developing
 
