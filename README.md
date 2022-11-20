@@ -2,7 +2,7 @@
 
 [![Windows-Build](https://github.com/newbiediver/rioring/actions/workflows/build_windows.yml/badge.svg)](https://github.com/newbiediver/rioring/actions/workflows/build_windows.yml)
 [![Linux-Build](https://github.com/newbiediver/rioring/actions/workflows/build_linux.yml/badge.svg)](https://github.com/newbiediver/rioring/actions/workflows/build_linux.yml)
-![Version](https://img.shields.io/badge/Version-0.1.1-orange.svg)
+![Version](https://img.shields.io/badge/Version-0.2.0-orange.svg)
 
 C++17 크로스 플랫폼 비동기 네트워킹 i/o 라이브러리. <br />
 C++17 Cross platform asynchronous networking i/o library.
@@ -16,33 +16,59 @@ The default model is Registered i/o on the Windows platform and io_uring on the 
 이 i/o 라이브러리는 내장된 socket object 만 지원합니다. 파일 디스크립터는 지원하지 않습니다.<br />
 This i/o library does support only built-in socket object. No file descriptor supported.
 
-***노트: 현재 tcp socket 만 지원합니다. udp socket 은 곧 업데이트 예정입니다.*** <br />
-***NOTE: Now we support only tcp socket. udp socket will update soon.***
-
 ***노트: 기여자는 dev branch 에 PR 요청하시기 바랍니다. 곧 기여자 정책에 대해서 업데이트 될 예정입니다.*** <br />
 ***NOTE: Please contributor request PR to dev branch. We will update about contributor policy soon.***
 
-# Compiler
+## Compiler
 ***노트: clang 컴파일러는 테스트 해보지 않았습니다.***<br />
 ***NOTE: clang compiler has not tested.***
-1. Win32
+### 1. Win32
 ```
   Minumum - MSVC 16.0 (Visual Studio 2019)
   Recommend - MSVC 17.0 (Visual Studio 2022)
 ```
   
-2. Linux
+### 2. Linux
 ```
-  Minumum - gcc 9.0
-  Recommend - gcc 11.0
+  Minumum - gcc 9
+  Recommend - gcc 11
 ```
    
-3. Arch
+### 3. Arch
 ```
   x64/amd64
 ```
-  
-# Build & Install
+
+## Features
+### 1. Most latest network I/O service
+```shell
+Registered I/O - Windows platform
+I/O Uring - Linux platform
+```
+### 2. Built-in network socket
+```shell
+TCP - Socket and server system
+UDP - Socket and server system
+```
+### 3. Thread scheduling
+```shell
+Thread generator - Generate thread wrapper
+Thread object - Thread as a object
+```
+
+### 4. Buffer
+```shell
+Safe unlimited buffer - Never overflow buffer
+Double buffer - Switchable unlimited buffer
+```
+
+### 5. Many helpers
+```shell
+Built-in address resolver
+Etc...
+```
+
+## Build & Install
 ### 1. Windows Platform
 ```shell
 # 소스코드 클론
@@ -87,8 +113,8 @@ C:\your\path\source> cmake --install .\build\src
 # /usr/local/lib <-- library file path
 ```
 
-# Example - Echo server
-### *NOTE: Please refer example directory*
+## Example - Echo server
+### *NOTE: Please refer example directory to see other examples*
 ```c++
 #include <iostream>
 #include <unordered_set>
@@ -111,8 +137,10 @@ public:
             event->on_disconnect_client( std::forward< decltype( socket ) >( socket ) );
         } );
 
-        new_socket->set_receive_event( []( auto && socket, auto && buffer ) {
-            event_receiver::on_read_message( std::forward< decltype( socket ) >( socket ), std::forward< decltype( buffer ) >( buffer ) );
+        new_socket->set_receive_event( []( auto &&socket, auto &&buffer, auto &&addr ) {
+            event_receiver::on_read_message( std::forward< decltype( socket ) >( socket ), 
+                    std::forward< decltype( buffer ) >( buffer ),
+                    std::forward< decltype( addr ) >( addr ) );
         } );
 
         std::cout << "Connected client " << new_socket->remote_ipv4() << ":" << new_socket->remote_port() << std::endl;
@@ -121,7 +149,7 @@ public:
         activating_sockets.insert( new_socket );
     }
 
-    static void on_read_message( socket_ptr &socket, io_buffer *buffer ) {
+    static void on_read_message( socket_ptr &socket, io_buffer *buffer, sockaddr *addr [[maybe_unused]] ) {
         // just echo
         auto tcp = to_tcp_socket_ptr( socket );
         tcp->send( *(*buffer), buffer->size() );
@@ -205,10 +233,10 @@ int main() {
 }
 ```
 
-# TODO (Will update)
-### 1. Implement UDP socket
-### 2. Support docker image
-### 3. Support conan package manager (Maybe not sure)
+## Next Step
+1. **Implement UDP socket** - updated
+2. **Support docker image** - developing
+3. **Support package manager** - developing
 
 # License
 *MIT license Copyright (c) 2022 NewbieDiver*
