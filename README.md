@@ -19,7 +19,7 @@ This i/o library does support only built-in socket object. No file descriptor su
 ***노트: 기여자는 dev branch 에 PR 요청하시기 바랍니다. 곧 기여자 정책에 대해서 업데이트 될 예정입니다.*** <br />
 ***NOTE: Please contributor request PR to dev branch. We will update about contributor policy soon.***
 
-## Compiler
+## Requirement
 ***노트: clang 컴파일러는 테스트 해보지 않았습니다.***<br />
 ***NOTE: clang compiler has not tested.***
 ### 1. Win32
@@ -37,6 +37,15 @@ This i/o library does support only built-in socket object. No file descriptor su
 ### 3. Arch
 ```
   x64/amd64
+```
+
+### 4. Environments
+```
+* Windows
+  - >= Windows 8, Windows Server 2012 SP3
+* Linux
+  - >= Kernel 5.13
+  - >= liburing 2.1 (Ex> Installable 2.1 on ubuntu apt)
 ```
 
 ## Features
@@ -232,6 +241,10 @@ int main() {
     return 0;
 }
 ```
+
+## Dependencies
+1. **Win32 - Nothing. Just winsock.**
+2. **Linux - [axboe/liburing](https://github.com/axboe/liburing)**
 
 ## Next Step
 1. **Implement UDP socket** - updated
