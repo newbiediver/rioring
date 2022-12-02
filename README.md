@@ -249,9 +249,17 @@ int main() {
 1. **Win32 - Nothing. Just winsock.**
 2. **Linux - [axboe/liburing](https://github.com/axboe/liburing)**
 
+## Using docker image
+```dockerfile
+# cmake g++-11 ninja-build included
+# you can use rioring include & rioring.a library file 
+FROM ghcr.io/newbiediver/rioring:latest
+...
+```
+
 ## Next Step
 1. ~~Implement UDP socket~~ - updated
-2. **Support docker image** - developing
+2. ~~Support docker image~~ - updated
 3. **Support package manager** - developing
 
 # License
