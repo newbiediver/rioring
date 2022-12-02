@@ -3,7 +3,7 @@
 [![Windows-Build](https://github.com/newbiediver/rioring/actions/workflows/build_windows.yml/badge.svg)](https://github.com/newbiediver/rioring/actions/workflows/build_windows.yml)
 [![Linux-Build](https://github.com/newbiediver/rioring/actions/workflows/build_linux.yml/badge.svg)](https://github.com/newbiediver/rioring/actions/workflows/build_linux.yml)
 [![Dockerized](https://github.com/newbiediver/rioring/actions/workflows/build_docker.yml/badge.svg)](https://github.com/newbiediver/rioring/actions/workflows/build_docker.yml)
-![Version](https://img.shields.io/badge/Version-0.2.0-orange.svg)
+![Version](https://img.shields.io/badge/Version-0.2.1-orange.svg)
 
 [https://github.com/newbiediver/rioring](https://github.com/newbiediver/rioring)
 
