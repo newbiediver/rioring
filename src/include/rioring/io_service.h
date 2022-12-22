@@ -109,8 +109,9 @@ private:
     std::vector< io_uring* >    io_array;
     simple_pool< io_context >   context_pool;
     std::atomic_int             running_io{ 0 };
-
     thread_generator            tg;
+
+    static thread_local io_uring *thread_ring;
 };
 
 }

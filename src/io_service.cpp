@@ -238,11 +238,25 @@ RIO_RQ io_service::create_request_queue( SOCKET s ) {
 #else
 
 #include <cassert>
+#include <random>
 #include "rioring/io_service.h"
 #include "rioring/io_context.h"
 #include "rioring/tcp_server.h"
 
 namespace rioring {
+
+thread_local io_uring *io_service::thread_ring = nullptr;
+
+template< typename T, typename = typename std::enable_if< std::is_integral< T >::value, T >::type >
+inline T random( T begin, T end ) {
+    static std::random_device dev;
+    static std::mt19937_64 r{ dev() };
+    static critical_section lock;
+
+    std::scoped_lock sc{ lock };
+    std::uniform_int_distribution< T > dist{ begin, end };
+    return dist( r );
+}
 
 io_service::io_service() : context_pool{ RIORING_CONTEXT_POOL_SIZE } {}
 
@@ -297,8 +311,11 @@ sockaddr *io_service::current_sockaddr( io_context *ctx ) {
 }
 
 bool io_service::submit( io_context *ctx ) {
-    size_t index = ctx->handler->object_id() % io_array.size();
-    auto ring = io_array[ index ];
+    auto ring = thread_ring;
+    if ( !ring ) {
+        ring = io_array[ rioring::random< size_t >( 0, io_array.size() - 1 ) ];
+    }
+
     io_uring_sqe *sqe = io_uring_get_sqe( ring );
 
     if ( !sqe ) {
@@ -359,7 +376,7 @@ void io_service::on_thread() {
 
     if ( auto r = io_uring_queue_init_params( RIORING_IO_URING_ENTRIES, &ring, &params );
             r != 0 || !( params.features & IORING_FEAT_FAST_POLL ) ) {
-        assert( ( params.features & IORING_FEAT_FAST_POLL ) && "Kernel does not support fast poll!" );
+        assert( ( params.features & IORING_FEAT_FAST_POLL ) && "Kernel does not support io uring fast poll!" );
         int *p = nullptr;
         *p = 0;
     } else {
@@ -367,12 +384,14 @@ void io_service::on_thread() {
         io_array.push_back( &ring );
     }
 
+    thread_ring = &ring;
     running_io++;
 
     io( &ring );
     io_uring_queue_exit( &ring );
 
     running_io--;
+    thread_ring = nullptr;
 }
 
 // io_uring 은 socket 의 close를 direct 로 처리하면 안됨. (submit 필요)
